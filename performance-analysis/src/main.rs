@@ -2,13 +2,10 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::{env, mem};
 
-use plotly::color::NamedColor;
-use plotly::common::{DashType, Title};
-use plotly::layout::{Axis, Shape, ShapeLine, ShapeType};
+use plotly::common::Title;
+use plotly::layout::Axis;
 use plotly::{BoxPlot, ImageFormat, Layout, Plot};
 
-
-const REFERENCE_VALUE_Y: f64 = 12.0;
 
 #[derive(Debug)]
 struct Config {
@@ -72,9 +69,12 @@ fn parse_collected_data(filename: &str) -> Result<Vec<f64>, io::Error> {
     let vec = reader
         .lines()
         .filter_map(|line| {
-            line.expect("Failed to read line").parse::<u64>().ok()
+            line.expect("Failed to read line").parse::<f64>().ok()
         })
-        .map(|x| (x as f64) / 1_000_000.0)
+        // Sample taken every 10 seconds, so let's convert it to pkt/sec (pps)
+        .map(|x| x / 10.0)
+        // Convert to Mpps
+        .map(|x| x / 1_000_000.0)
         .collect();
     Ok(vec)
 }
@@ -111,27 +111,9 @@ fn generate_box_plot(
 
 
 fn generate_layout() -> Layout {
-    let mut layout = Layout::new()
+    Layout::new()
         .height(500)
         .width(1000)
         .y_axis(Axis::new().title(Title::new("Throughput (Mpps)")))
-        .show_legend(false);
-    
-    // Add reference line
-    layout.add_shape(
-        Shape::new()
-            .shape_type(ShapeType::Line)
-            .x0(-1)
-            .x1(2)
-            .y0(REFERENCE_VALUE_Y)
-            .y1(REFERENCE_VALUE_Y)
-            .line(
-                ShapeLine::new()
-                    .color(NamedColor::DarkBlue)
-                    .width(2.)
-                    .dash(DashType::DashDot),
-            ),
-    );
-    
-    layout
+        .show_legend(false)
 }
