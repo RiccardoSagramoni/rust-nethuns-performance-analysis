@@ -1,0 +1,26 @@
+[package]
+name = "rust-tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = "fat"
+
+
+[dependencies]
+anyhow = "1.0.75"
+ctrlc = "3.4.1"
+dhat = "0.3.2"
+nethuns = { version = "0.1.0", path = "./lib/rust-nethuns", features = [
+    "netmap",
+] }
+pico-args = "0.5.0"
+
+
+[features]
+dhat-heap = [] # if you are doing heap profiling
