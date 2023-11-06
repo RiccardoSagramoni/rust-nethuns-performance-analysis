@@ -105,8 +105,10 @@ fn generate_box_plot(
     
     plot.set_layout(generate_layout());
     
-    plot.show();
+    // plot.show();
+    plot.write_html(format!("{output_filename}.html"));
     plot.write_image(output_filename, ImageFormat::PNG, 1000, 500, 4.0);
+    plot.write_image(output_filename, ImageFormat::SVG, 1000, 500, 1.0);
 }
 
 
