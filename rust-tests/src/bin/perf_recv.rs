@@ -16,7 +16,7 @@ use nethuns::types::{
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
 const METER_DURATION_SECS: u64 = 10 * 60 + 1;
-const METER_RATE_SECS: u64 = 1;
+const METER_RATE_SECS: u64 = 10;
 
 
 fn main() {
