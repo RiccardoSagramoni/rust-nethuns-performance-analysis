@@ -4,12 +4,11 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use std::{env, mem, thread};
 
+use nethuns::sockets::Local;
 use nethuns::sockets::{BindableNethunsSocket, NethunsSocket};
 use nethuns::types::{
-    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
-    NethunsSocketOptions,
+    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode, NethunsSocketOptions,
 };
-
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -18,14 +17,12 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 const METER_DURATION_SECS: u64 = 10 * 60 + 1;
 const METER_RATE_SECS: u64 = 10;
 
-
 #[derive(Debug)]
 struct Args {
     interface: String,
     batch_size: u32,
     zerocopy: bool,
 }
-
 
 const HELP_BRIEF: &str = "\
 Usage:  send [ options ]
@@ -38,7 +35,6 @@ Other options:
             [ -z ]              enable send zero-copy
 ";
 
-
 fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
@@ -46,9 +42,8 @@ fn main() {
     let (args, payload, opt) = configure_example();
     
     // Setup and fill transmission rings for each socket
-    let socket = prepare_tx_socket(&args, opt, &payload).unwrap();
+    let socket: NethunsSocket<Local> = prepare_tx_socket(&args, opt, &payload).unwrap();
     let mut pktid: usize = 0; // pos of next slot/packet to send in tx ring
-    
     
     // Define atomic variable for program termination
     let term = Arc::new(AtomicBool::new(false));
@@ -69,7 +64,6 @@ fn main() {
             term.store(true, Ordering::Relaxed);
         })
     };
-    
     
     let mut total: u64 = 0;
     let mut time_for_logging = SystemTime::now()
@@ -93,14 +87,12 @@ fn main() {
         
         // Transmit packets from each socket
         if args.zerocopy {
-            transmit_zc(&args, &socket, &mut pktid, payload.len(), &mut total)
-                .unwrap();
+            transmit_zc(&args, &socket, &mut pktid, payload.len(), &mut total).unwrap();
         } else {
             transmit_c(&args, &socket, &payload, &mut total).unwrap();
         }
     }
 }
-
 
 /// Configures the example for sending packets, by parsing the command line
 /// arguments and filling the default payload and nethuns options.
@@ -153,7 +145,6 @@ fn configure_example() -> (Args, [u8; 34], NethunsSocketOptions) {
     (args, payload, opt)
 }
 
-
 /// Parses the command-line arguments and build an instance of the `Args`
 /// struct.
 ///
@@ -189,7 +180,6 @@ fn parse_args() -> Result<Args, anyhow::Error> {
     Ok(args)
 }
 
-
 /// Set an handler for the SIGINT signal (Ctrl-C),
 /// which will notify the other threads
 /// to gracefully stop their execution.
@@ -201,13 +191,12 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
     .expect("Error setting Ctrl-C handler");
 }
 
-
 /// Setup and fill transmission ring.
 fn prepare_tx_socket(
     args: &Args,
     opt: NethunsSocketOptions,
     payload: &[u8],
-) -> Result<NethunsSocket, anyhow::Error> {
+) -> Result<NethunsSocket<Local>, anyhow::Error> {
     // Open socket
     let mut socket = BindableNethunsSocket::open(opt)?
         .bind(&args.interface, NethunsQueue::Any)
@@ -231,11 +220,10 @@ fn prepare_tx_socket(
     Ok(socket)
 }
 
-
 /// Transmit packets in the tx ring (use optimized send, zero copy).
 fn transmit_zc(
     args: &Args,
-    socket: &NethunsSocket,
+    socket: &NethunsSocket<Local>,
     pktid: &mut usize,
     pkt_size: usize,
     total: &mut u64,
@@ -253,7 +241,6 @@ fn transmit_zc(
     Ok(())
 }
 
-
 /// Transmit packets in the tx ring (use classic send, copy)
 ///
 /// # Arguments
@@ -264,7 +251,7 @@ fn transmit_zc(
 /// - `socket_idx`: Socket index.
 fn transmit_c(
     args: &Args,
-    socket: &NethunsSocket,
+    socket: &NethunsSocket<Local>,
     payload: &[u8],
     totals: &mut u64,
 ) -> Result<(), anyhow::Error> {

@@ -4,12 +4,10 @@ use std::time::{Duration, SystemTime};
 use std::{env, mem, thread};
 
 use nethuns::sockets::errors::NethunsRecvError;
-use nethuns::sockets::BindableNethunsSocket;
+use nethuns::sockets::{BindableNethunsSocket, Local, NethunsSocket};
 use nethuns::types::{
-    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
-    NethunsSocketOptions,
+    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode, NethunsSocketOptions,
 };
-
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -17,7 +15,6 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 const METER_DURATION_SECS: u64 = 10 * 60 + 1;
 const METER_RATE_SECS: u64 = 10;
-
 
 fn main() {
     #[cfg(feature = "dhat-heap")]
@@ -40,11 +37,10 @@ fn main() {
     };
     
     // Open sockets
-    let socket = BindableNethunsSocket::open(nethuns_opt)
+    let socket: NethunsSocket<Local> = BindableNethunsSocket::open(nethuns_opt)
         .unwrap()
         .bind(&dev, NethunsQueue::Any)
         .unwrap();
-    
     
     // Define atomic variable for program termination
     let term = Arc::new(AtomicBool::new(false));
@@ -65,7 +61,6 @@ fn main() {
             term.store(true, Ordering::Relaxed);
         })
     };
-    
     
     // Start receiving
     let mut total: u64 = 0;
@@ -98,7 +93,6 @@ fn main() {
         }
     }
 }
-
 
 /// Set an handler for the SIGINT signal (Ctrl-C),
 /// which will notify the other threads
