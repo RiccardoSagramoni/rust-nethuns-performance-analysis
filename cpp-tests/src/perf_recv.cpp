@@ -100,12 +100,12 @@ int main(int argc, char *argv[])
         terminate_program, 
         std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
     );
-
+    
     // case single thread (main) with generic number of sockets
     try {
         auto time_to_log = next_meter_log();
         
-        while (!term.load(std::memory_order_relaxed)) {
+        while (likely(!term.load(std::memory_order_relaxed))) {
             if (time_to_log < std::chrono::system_clock::now()) {
                 std::cout << total << std::endl;
                 total = 0;
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
             const nethuns_pkthdr_t *pkthdr = nullptr;
             const unsigned char *frame = nullptr;
             uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
-    
+            
             if (pkt_id == NETHUNS_ERROR) {
                 throw nethuns_exception(my_socket);
             }

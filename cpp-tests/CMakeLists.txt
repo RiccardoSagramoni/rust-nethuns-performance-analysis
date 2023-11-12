@@ -29,8 +29,7 @@ list(APPEND NETHUNS_LIBS ${LIBNETMAP_LIBRARY})
 #
 # Compiler options...
 #
-set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -g -O2 -march=native -fomit-frame-pointer -Wall -Wextra -Wshadow")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -std=c++17 -march=native -fomit-frame-pointer -Wall -Wextra -Wshadow")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O2 -std=c++17 -march=native -fomit-frame-pointer -Wall -Wextra -Wshadow -flto -ffat-lto-objects")
 
 find_library(LIBPCAP_LIBRARY NAMES libpcap.a PATHS "/usr/local/opt/licap/lib" NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
 find_path(LIBPCAP_INCLUDE_DIR NAMES pcap/pcap.h PATHS "/usr/local/opt/libpcap/include/" NO_DEFAULT_PATH_ENVIRONMENT_PATH)
