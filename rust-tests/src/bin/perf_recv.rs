@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use std::{env, mem, thread};
+use std::{env, thread};
 
 use nethuns::sockets::errors::NethunsRecvError;
 use nethuns::sockets::{BindableNethunsSocket, Local, NethunsSocket};
@@ -62,29 +62,27 @@ fn main() {
         })
     };
     
-    // Start receiving
-    let mut total: u64 = 0;
-    let mut time_for_logging = SystemTime::now()
-        .checked_add(Duration::from_secs(METER_RATE_SECS))
-        .unwrap();
+    // Start thread for data collection
+    let total = Arc::new(AtomicU64::new(0));
     
+    let meter_th = {
+        let term = term.clone();
+        let total = total.clone();
+        thread::spawn(move || {
+            meter(total, term);
+        })
+    };
+    
+    // Start receiving
     loop {
         // Check condition for program termination
         if term.load(Ordering::Relaxed) {
             break;
         }
         
-        if time_for_logging < SystemTime::now() {
-            let total = mem::replace(&mut total, 0);
-            println!("{total}");
-            time_for_logging = SystemTime::now()
-                .checked_add(Duration::from_secs(METER_RATE_SECS))
-                .unwrap();
-        }
-        
         match socket.recv() {
             Ok(_) => {
-                total += 1;
+                total.fetch_add(1, Ordering::SeqCst);
             }
             Err(NethunsRecvError::InUse)
             | Err(NethunsRecvError::NoPacketsAvailable)
@@ -92,6 +90,8 @@ fn main() {
             Err(e) => panic!("Error: {e}"),
         }
     }
+    
+    meter_th.join().expect("join failed");
 }
 
 /// Set an handler for the SIGINT signal (Ctrl-C),
@@ -103,4 +103,29 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
         term.store(true, Ordering::Relaxed);
     })
     .expect("Error setting Ctrl-C handler");
+}
+
+/// Collect stats about the received packets every `METER_RATE_SECS` seconds
+fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
+    let mut now = SystemTime::now();
+    
+    loop {
+        if term.load(Ordering::Relaxed) {
+            break;
+        }
+        
+        // Sleep for 1 second
+        let next_sys_time = now
+            .checked_add(Duration::from_secs(METER_RATE_SECS))
+            .expect("SystemTime::checked_add() failed");
+        if let Ok(delay) = next_sys_time.duration_since(now) {
+            thread::sleep(delay);
+        }
+        now = next_sys_time;
+        
+        let total = total.swap(0, Ordering::SeqCst);
+        
+        // Print number of sent packets
+        println!("pkt/sec: {}", total);
+    }
 }

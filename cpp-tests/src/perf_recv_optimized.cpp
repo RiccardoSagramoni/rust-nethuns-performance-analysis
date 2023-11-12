@@ -25,32 +25,35 @@ char* errbuf;
 std::string interface = "";
 
 // stats collection
-std::atomic<uint64_t> total(0);
+uint64_t total = 0;
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
 
 // terminate application
-std::atomic<bool> term(false);
+volatile bool term = false;
 
 // termination signal handler
 void terminate(int exit_signal)
 {
     (void)exit_signal;
-    term.store(true, std::memory_order_relaxed);
+    term = true;
 }
 
 void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
     std::this_thread::sleep_until(stop_timestamp);
-    term.store(true, std::memory_order_relaxed);
+    term = true;
 }
 
 void meter() {
     auto now = std::chrono::system_clock::now();
-    while (!term.load(std::memory_order_relaxed)) {
+    long old_totals = 0;
+    while (!term) {
         now += std::chrono::seconds(1);
         std::this_thread::sleep_until(now);
-    	std::cout << "pkt/sec: " << total.exchange(0) << std::endl;
+        long x = total;
+    	std::cout << "pkt/sec: " << x - old_totals << std::endl;
+        old_totals = x;
     }
 }
 
@@ -110,7 +113,7 @@ int main(int argc, char *argv[])
     
     // case single thread (main) with generic number of sockets
     try {
-        while (!term.load(std::memory_order_relaxed)) {            
+        while (likely(!term)) {            
             const nethuns_pkthdr_t *pkthdr = nullptr;
             const unsigned char *frame = nullptr;
             uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
@@ -121,7 +124,7 @@ int main(int argc, char *argv[])
             
             if (pkt_id > 0) {
                 // process valid packet here
-                total.fetch_add(1);
+                total++;
                 nethuns_rx_release(my_socket, pkt_id);
             }
         }
