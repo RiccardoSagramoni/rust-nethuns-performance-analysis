@@ -1,8 +1,8 @@
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use std::{env, mem, thread};
+use std::{env, thread};
 
 use nethuns::sockets::Local;
 use nethuns::sockets::{BindableNethunsSocket, NethunsSocket};
@@ -65,10 +65,14 @@ fn main() {
         })
     };
     
-    let mut total: u64 = 0;
-    let mut time_for_logging = SystemTime::now()
-        .checked_add(Duration::from_secs(METER_RATE_SECS))
-        .unwrap();
+    let total = Arc::new(AtomicU64::new(0));
+    let meter_th = {
+        let total = total.clone();
+        let term = term.clone();
+        thread::spawn(move || {
+            meter(total, term);
+        })
+    };
     
     loop {
         // Check condition for program termination
@@ -76,22 +80,15 @@ fn main() {
             break;
         }
         
-        // Check if enough time has passed for printing stats
-        if time_for_logging < SystemTime::now() {
-            let total = mem::replace(&mut total, 0);
-            println!("{total}");
-            time_for_logging = SystemTime::now()
-                .checked_add(Duration::from_secs(METER_RATE_SECS))
-                .unwrap();
-        }
-        
         // Transmit packets from each socket
         if args.zerocopy {
-            transmit_zc(&args, &socket, &mut pktid, payload.len(), &mut total).unwrap();
+            transmit_zc(&args, &socket, &mut pktid, payload.len(), &total).unwrap();
         } else {
-            transmit_c(&args, &socket, &payload, &mut total).unwrap();
+            transmit_c(&args, &socket, &payload, &total).unwrap();
         }
     }
+    
+    meter_th.join().expect("join failed");
 }
 
 /// Configures the example for sending packets, by parsing the command line
@@ -226,7 +223,7 @@ fn transmit_zc(
     socket: &NethunsSocket<Local>,
     pktid: &mut usize,
     pkt_size: usize,
-    total: &mut u64,
+    total: &Arc<AtomicU64>,
 ) -> Result<(), anyhow::Error> {
     // Prepare batch
     for _ in 0..args.batch_size {
@@ -234,7 +231,7 @@ fn transmit_zc(
             break;
         }
         *pktid += 1;
-        *total += 1;
+        total.fetch_add(1, Ordering::SeqCst);
     }
     // Send batch
     socket.flush()?;
@@ -253,16 +250,41 @@ fn transmit_c(
     args: &Args,
     socket: &NethunsSocket<Local>,
     payload: &[u8],
-    totals: &mut u64,
+    total: &Arc<AtomicU64>,
 ) -> Result<(), anyhow::Error> {
     // Prepare batch
     for _ in 0..args.batch_size {
         if socket.send(payload).is_err() {
             break;
         }
-        *totals += 1;
+        total.fetch_add(1, Ordering::SeqCst);
     }
     // Send batch
     socket.flush()?;
     Ok(())
+}
+
+/// Collect stats about the received packets every `METER_RATE_SECS` seconds
+fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
+    let mut now = SystemTime::now();
+    
+    loop {
+        if term.load(Ordering::Relaxed) {
+            break;
+        }
+        
+        // Sleep for 1 second
+        let next_sys_time = now
+            .checked_add(Duration::from_secs(METER_RATE_SECS))
+            .expect("SystemTime::checked_add() failed");
+        if let Ok(delay) = next_sys_time.duration_since(now) {
+            thread::sleep(delay);
+        }
+        now = next_sys_time;
+        
+        let total = total.swap(0, Ordering::SeqCst);
+        
+        // Print number of sent packets
+        println!("pkt/sec: {}", total);
+    }
 }

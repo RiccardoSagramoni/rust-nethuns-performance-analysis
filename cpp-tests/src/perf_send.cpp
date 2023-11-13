@@ -44,7 +44,7 @@ int batch_size = 1;
 bool zerocopy = false;
 
 // stats collection
-uint64_t total = 0;
+std::atomic<uint64_t> total(0);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -62,6 +62,15 @@ void terminate(int exit_signal)
 void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
     std::this_thread::sleep_until(stop_timestamp);
     term.store(true, std::memory_order_relaxed);
+}
+
+void meter() {
+    auto now = std::chrono::system_clock::now();
+    while (!term.load(std::memory_order_relaxed)) {
+        now += std::chrono::seconds(METER_RATE_SECS);
+        std::this_thread::sleep_until(now);
+    	std::cout << "pkt/sec: " << total.exchange(0) << std::endl;
+    }
 }
 
 
@@ -199,18 +208,10 @@ int main(int argc, char *argv[])
         std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
     );
     
+    std::thread meter_th(meter);
      
     try {
-        auto time_to_log = next_meter_log();
-        
-        while (!term.load(std::memory_order_relaxed)) {
-            // print stats every second
-            if (time_to_log < std::chrono::system_clock::now()) {
-                std::cout << total << std::endl;
-                total = 0;
-                time_to_log = next_meter_log();
-            }
-            
+        while (!term.load(std::memory_order_relaxed)) {            
             if (zerocopy) {
                 transmit_zc(34);
             }
