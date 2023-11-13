@@ -48,7 +48,7 @@ void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
 void meter() {
     auto now = std::chrono::system_clock::now();
     while (!term.load(std::memory_order_relaxed)) {
-        now += std::chrono::seconds(1);
+        now += std::chrono::seconds(METER_RATE_SECS);
         std::this_thread::sleep_until(now);
     	std::cout << "pkt/sec: " << total.exchange(0) << std::endl;
     }

@@ -49,7 +49,7 @@ void meter() {
     auto now = std::chrono::system_clock::now();
     long old_totals = 0;
     while (!term) {
-        now += std::chrono::seconds(1);
+        now += std::chrono::seconds(METER_RATE_SECS);
         std::this_thread::sleep_until(now);
         long x = total;
     	std::cout << "pkt/sec: " << x - old_totals << std::endl;
