@@ -1,0 +1,55 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/recv_rust.txt",
+    cpp_data_filename: "../data/recv_cpp.txt",
+    output_filename: "../data/recv",
+}
+
+Rust stats:
+Stats {
+    mean: 20.49912328196721,
+    median: 20.6923533,
+    population_standard_deviation: 2.4184672070117865,
+    population_variance: 5.848983631391391,
+    standard_deviation: 2.4385378184302535,
+    variance: 5.946466691914581,
+}
+
+C++ stats:
+Stats {
+    mean: 15.179332266666671,
+    median: 15.303992000000001,
+    population_standard_deviation: 0.7910596793849081,
+    population_variance: 0.6257754163485535,
+    standard_deviation: 0.7977354068471024,
+    variance: 0.636381779337512,
+}
+
+
+
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/recv_rust.txt",
+    cpp_data_filename: "../data/recv_cpp.txt",
+    output_filename: "../data/recv_optimized",
+}
+
+Rust stats:
+Stats {
+    mean: 20.49912328196721,
+    median: 20.6923533,
+    population_standard_deviation: 2.4184672070117865,
+    population_variance: 5.848983631391391,
+    standard_deviation: 2.4385378184302535,
+    variance: 5.946466691914581,
+}
+
+C++ stats:
+Stats {
+    mean: 13.514541961666664,
+    median: 13.516284200000001,
+    population_standard_deviation: 0.030545856218905314,
+    population_variance: 0.0009330493321460364,
+    standard_deviation: 0.03080363172754373,
+    variance: 0.0009488637276061387,
+}
