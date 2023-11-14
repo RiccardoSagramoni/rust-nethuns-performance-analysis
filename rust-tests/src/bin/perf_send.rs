@@ -66,7 +66,7 @@ fn main() {
     };
     
     let total = Arc::new(AtomicU64::new(0));
-    let meter_th = {
+    let _ = {
         let total = total.clone();
         let term = term.clone();
         thread::spawn(move || {
@@ -87,8 +87,6 @@ fn main() {
             transmit_c(&args, &socket, &payload, &total).unwrap();
         }
     }
-    
-    meter_th.join().expect("join failed");
 }
 
 /// Configures the example for sending packets, by parsing the command line

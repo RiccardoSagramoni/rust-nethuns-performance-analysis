@@ -65,7 +65,7 @@ fn main() {
     // Start thread for data collection
     let total = Arc::new(AtomicU64::new(0));
     
-    let meter_th = {
+    let _ = {
         let term = term.clone();
         let total = total.clone();
         thread::spawn(move || {
@@ -90,8 +90,6 @@ fn main() {
             Err(e) => panic!("Error: {e}"),
         }
     }
-    
-    meter_th.join().expect("join failed");
 }
 
 /// Set an handler for the SIGINT signal (Ctrl-C),
