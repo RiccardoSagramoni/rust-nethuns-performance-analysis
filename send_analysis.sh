@@ -1,5 +1,5 @@
 #!/bin/sh
 
 cd performance-analysis
-cargo run -- ../data/send_rust.txt ../data/send_cpp.txt ../data/send
+cargo run -- ../data/send_rust.txt ../data/send_cpp.txt ../data/send "Send"
 cd -
