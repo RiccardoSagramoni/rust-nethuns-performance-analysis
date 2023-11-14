@@ -1,0 +1,20 @@
+# started on Tue Nov 14 16:06:21 2023
+
+
+ Performance counter stats for './recv/perf_recv vale0:0':
+
+        600.180,52 msec task-clock                       #    0,995 CPUs utilized             
+           231.278      context-switches                 #  385,347 /sec                      
+                 0      cpu-migrations                   #    0,000 /sec                      
+             8.591      page-faults                      #   14,314 /sec                      
+ 2.090.598.054.422      cycles                           #    3,483 GHz                       
+ 3.299.728.213.945      instructions                     #    1,58  insn per cycle            
+   532.535.002.720      branches                         #  887,291 M/sec                     
+     1.586.486.675      branch-misses                    #    0,30% of all branches           
+
+     603,028221559 seconds time elapsed
+
+     485,288911000 seconds user
+     114,560479000 seconds sys
+
+
