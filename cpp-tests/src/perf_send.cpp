@@ -69,7 +69,7 @@ void meter() {
     while (!term.load(std::memory_order_relaxed)) {
         now += std::chrono::seconds(METER_RATE_SECS);
         std::this_thread::sleep_until(now);
-    	std::cout << "pkt/sec: " << total.exchange(0) << std::endl;
+    	std::cout << total.exchange(0) << std::endl;
     }
 }
 

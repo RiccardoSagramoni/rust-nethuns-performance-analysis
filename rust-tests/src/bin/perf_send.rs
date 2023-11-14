@@ -283,6 +283,6 @@ fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
         let total = total.swap(0, Ordering::SeqCst);
         
         // Print number of sent packets
-        println!("pkt/sec: {}", total);
+        println!("{}", total);
     }
 }
