@@ -25,7 +25,7 @@ char* errbuf;
 std::string interface = "";
 
 // stats collection
-uint64_t total = 0;
+std::atomic<uint64_t> total(0);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -45,9 +45,13 @@ void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
     term.store(true, std::memory_order_relaxed);
 }
 
-
-inline std::chrono::system_clock::time_point next_meter_log() {
-    return std::chrono::system_clock::now() + std::chrono::seconds(METER_RATE_SECS);
+void meter() {
+    auto now = std::chrono::system_clock::now();
+    while (!term.load(std::memory_order_relaxed)) {
+        now += std::chrono::seconds(METER_RATE_SECS);
+        std::this_thread::sleep_until(now);
+    	std::cout << total.exchange(0) << std::endl;
+    }
 }
 
 
@@ -100,29 +104,24 @@ int main(int argc, char *argv[])
         terminate_program, 
         std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
     );
-
+    
+    // start thread for stats collection
+    std::thread meter_th(meter);
+    
     // case single thread (main) with generic number of sockets
     try {
-        auto time_to_log = next_meter_log();
-        
-        while (!term.load(std::memory_order_relaxed)) {
-            if (time_to_log < std::chrono::system_clock::now()) {
-                std::cout << total << std::endl;
-                total = 0;
-                time_to_log = next_meter_log();
-            }
-            
+        while (!term.load(std::memory_order_relaxed)) {            
             const nethuns_pkthdr_t *pkthdr = nullptr;
             const unsigned char *frame = nullptr;
             uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
-    
+            
             if (pkt_id == NETHUNS_ERROR) {
                 throw nethuns_exception(my_socket);
             }
             
             if (pkt_id > 0) {
                 // process valid packet here
-                total++;
+                total.fetch_add(1);
                 nethuns_rx_release(my_socket, pkt_id);
             }
         }

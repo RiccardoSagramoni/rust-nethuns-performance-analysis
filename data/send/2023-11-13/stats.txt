@@ -1,0 +1,55 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/send_rust.txt",
+    cpp_data_filename: "../data/send_cpp.txt",
+    output_filename: "../data/send",
+}
+
+Rust stats:
+Stats {
+    mean: 10.704391973770491,
+    median: 11.042752,
+    population_standard_deviation: 1.4656345512087865,
+    population_variance: 2.148084637696981,
+    standard_deviation: 1.4777977020977073,
+    variance: 2.183886048325264,
+}
+
+C++ stats:
+Stats {
+    mean: 5.354578741666666,
+    median: 5.35399915,
+    population_standard_deviation: 0.014667482405321971,
+    population_variance: 0.00021513504011042958,
+    standard_deviation: 0.014791260822609772,
+    variance: 0.00021878139672247074,
+}
+
+
+
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/send_rust.txt",
+    cpp_data_filename: "../data/send_cpp.txt",
+    output_filename: "../data/send_zerocopy",
+}
+
+Rust stats:
+Stats {
+    mean: 12.143605193442617,
+    median: 12.5130616,
+    population_standard_deviation: 1.5913140183044776,
+    population_variance: 2.5322803048523435,
+    standard_deviation: 1.6045201702066205,
+    variance: 2.5744849765998827,
+}
+
+C++ stats:
+Stats {
+    mean: 10.87360618666667,
+    median: 10.82814105,
+    population_standard_deviation: 0.2986957392474328,
+    population_variance: 0.08921914464457038,
+    standard_deviation: 0.30121642308621094,
+    variance: 0.09073133353685123,
+}

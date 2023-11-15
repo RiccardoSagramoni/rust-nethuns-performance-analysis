@@ -12,6 +12,7 @@ struct Config {
     rust_data_filename: String,
     cpp_data_filename: String,
     output_filename: String,
+    title: String,
 }
 
 
@@ -45,20 +46,26 @@ fn main() {
     println!("C++ stats:\n{:#?}\n", compute_stats(&cpp_data));
     
     // Generate plot
-    generate_box_plot(rust_data, cpp_data, &config.output_filename);
+    generate_box_plot(
+        rust_data,
+        cpp_data,
+        &config.output_filename,
+        &config.title,
+    );
 }
 
 
 fn get_config() -> Config {
     let mut args: Vec<String> = env::args().collect();
-    if args.len() < 4 {
-        panic!("Usage: {} <rust_data_filename> <cpp_data_filename> <output_filename>", args[0]);
+    if args.len() < 5 {
+        panic!("Usage: {} <rust_data_filename> <cpp_data_filename> <output_filename> <title>", args[0]);
     }
     
     Config {
         rust_data_filename: mem::take(&mut args[1]),
         cpp_data_filename: mem::take(&mut args[2]),
         output_filename: mem::take(&mut args[3]),
+        title: mem::take(&mut args[4]),
     }
 }
 
@@ -97,13 +104,14 @@ fn generate_box_plot(
     rust_data: Vec<f64>,
     cpp_data: Vec<f64>,
     output_filename: &str,
+    title: &str,
 ) {
     let mut plot = Plot::new();
     
     plot.add_trace(BoxPlot::new(rust_data).name("Rust Nethuns"));
     plot.add_trace(BoxPlot::new(cpp_data).name("C++ Nethuns"));
     
-    plot.set_layout(generate_layout());
+    plot.set_layout(generate_layout(title));
     
     // plot.show();
     plot.write_html(format!("{output_filename}.html"));
@@ -112,10 +120,11 @@ fn generate_box_plot(
 }
 
 
-fn generate_layout() -> Layout {
+fn generate_layout(title: &str) -> Layout {
     Layout::new()
         .height(500)
         .width(1000)
         .y_axis(Axis::new().title(Title::new("Throughput (Mpps)")))
         .show_legend(false)
+        .title(Title::new(title))
 }
