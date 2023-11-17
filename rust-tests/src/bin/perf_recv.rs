@@ -6,7 +6,8 @@ use std::{env, thread};
 use nethuns::sockets::errors::NethunsRecvError;
 use nethuns::sockets::{BindableNethunsSocket, Local, NethunsSocket};
 use nethuns::types::{
-    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode, NethunsSocketOptions,
+    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
+    NethunsSocketOptions,
 };
 
 #[cfg(feature = "dhat-heap")]
