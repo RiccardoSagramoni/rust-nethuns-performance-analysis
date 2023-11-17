@@ -183,8 +183,8 @@ int main(int argc, char *argv[])
     // nethuns options
     netopt = {
         .numblocks       = 1
-    ,   .numpackets      = 2048
-    ,   .packetsize      = 2048
+    ,   .numpackets      = 1024
+    ,   .packetsize      = 0
     ,   .timeout_ms      = 0
     ,   .dir             = nethuns_in_out
     ,   .capture         = nethuns_cap_zero_copy

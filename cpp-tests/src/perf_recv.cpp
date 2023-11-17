@@ -70,8 +70,8 @@ int main(int argc, char *argv[])
     netopt =
     {
         .numblocks       = 1
-    ,   .numpackets      = 4096
-    ,   .packetsize      = 2048
+    ,   .numpackets      = 1024
+    ,   .packetsize      = 0
     ,   .timeout_ms      = 0
     ,   .dir             = nethuns_in_out
     ,   .capture         = nethuns_cap_zero_copy

@@ -125,8 +125,8 @@ fn configure_example() -> (Args, [u8; 34], NethunsSocketOptions) {
     // Nethuns options
     let opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: 2048,
-        packetsize: 2048,
+        numpackets: 1024,
+        packetsize: 0,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
