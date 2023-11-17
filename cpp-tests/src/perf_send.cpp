@@ -42,6 +42,7 @@ uint64_t pktid = 0;
 std::string interface = "";
 int batch_size = 1;
 bool zerocopy = false;
+#define PAYLOAD_LEN    34
 
 // stats collection
 std::atomic<uint64_t> total(0);
@@ -132,7 +133,7 @@ inline std::chrono::system_clock::time_point next_meter_log() {
 
 int main(int argc, char *argv[])
 {
-    static const unsigned char payload[34] =
+    static const unsigned char payload[PAYLOAD_LEN] =
     {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0xbf, /* L`..UF.. */
         0x97, 0xe2, 0xff, 0xae, 0x08, 0x00, 0x45, 0x00, /* ......E. */
@@ -140,7 +141,7 @@ int main(int argc, char *argv[])
         0xf5, 0x32, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* .2...... */
         0x07, 0x08
     };
-
+    
     // parse options from command line
     int opt = 0;
     int optidx = 0;
@@ -200,7 +201,7 @@ int main(int argc, char *argv[])
     };
        
     // Init nethuns socket
-    fill_tx_ring(payload, 34);
+    fill_tx_ring(payload, PAYLOAD_LEN);
         
     // set up timer for stopping data collection after 10 minutes
     std::thread stop_th(
@@ -213,10 +214,10 @@ int main(int argc, char *argv[])
     try {
         while (!term.load(std::memory_order_relaxed)) {            
             if (zerocopy) {
-                transmit_zc(34);
+                transmit_zc(PAYLOAD_LEN);
             }
             else {
-                transmit_c(payload, 34);
+                transmit_c(payload, PAYLOAD_LEN);
             }
         }
     } catch(nethuns_exception &e) {
