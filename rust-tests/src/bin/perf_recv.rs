@@ -4,9 +4,10 @@ use std::time::{Duration, SystemTime};
 use std::{env, thread};
 
 use nethuns::sockets::errors::NethunsRecvError;
-use nethuns::sockets::{BindableNethunsSocket, Local, NethunsSocket};
+use nethuns::sockets::BindableNethunsSocket;
 use nethuns::types::{
-    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode, NethunsSocketOptions,
+    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
+    NethunsSocketOptions,
 };
 
 #[cfg(feature = "dhat-heap")]
@@ -24,8 +25,8 @@ fn main() {
     
     let nethuns_opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: 4096,
-        packetsize: 2048,
+        numpackets: 1024,
+        packetsize: 0,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
@@ -37,7 +38,7 @@ fn main() {
     };
     
     // Open sockets
-    let socket: NethunsSocket<Local> = BindableNethunsSocket::open(nethuns_opt)
+    let socket = BindableNethunsSocket::open(nethuns_opt)
         .unwrap()
         .bind(&dev, NethunsQueue::Any)
         .unwrap();

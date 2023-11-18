@@ -1,0 +1,20 @@
+# started on Fri Nov 17 16:18:21 2023
+
+
+ Performance counter stats for './send/perf_send -i vale0:0 -b 64':
+
+        592.431,80 msec task-clock                       #    0,982 CPUs utilized             
+           233.917      context-switches                 #  394,842 /sec                      
+                 0      cpu-migrations                   #    0,000 /sec                      
+             1.165      page-faults                      #    1,966 /sec                      
+ 2.119.596.262.989      cycles                           #    3,578 GHz                       
+ 3.508.213.457.074      instructions                     #    1,66  insn per cycle            
+   589.888.609.901      branches                         #  995,707 M/sec                     
+     8.738.927.250      branch-misses                    #    1,48% of all branches           
+
+     603,009761629 seconds time elapsed
+
+     239,945509000 seconds user
+     352,446636000 seconds sys
+
+

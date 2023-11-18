@@ -4,10 +4,10 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
 
-use nethuns::sockets::Local;
 use nethuns::sockets::{BindableNethunsSocket, NethunsSocket};
 use nethuns::types::{
-    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode, NethunsSocketOptions,
+    NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
+    NethunsSocketOptions,
 };
 
 #[cfg(feature = "dhat-heap")]
@@ -24,6 +24,7 @@ struct Args {
     zerocopy: bool,
 }
 
+
 const HELP_BRIEF: &str = "\
 Usage:  send [ options ]
 Use --help (or -h) to see full option list and a complete description
@@ -35,14 +36,55 @@ Other options:
             [ -z ]              enable send zero-copy
 ";
 
+const PAYLOAD: [u8; 34] = [
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0xbf, /* L`..UF.. */
+    0x97, 0xe2, 0xff, 0xae, 0x08, 0x00, 0x45, 0x00, /* ......E. */
+    0x00, 0x54, 0xb3, 0xf9, 0x40, 0x00, 0x40, 0x11, /* .T..@.@. */
+    0xf5, 0x32, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* .2...... */
+    0x07, 0x08,
+];
+
+
 fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
     
-    let (args, payload, opt) = configure_example();
+    // Parse options from command line
+    let args = match parse_args() {
+        Ok(args) => {
+            println!(
+                "Test {} started with parameters: \n{:#?}",
+                env::args().next().unwrap(),
+                args
+            );
+            args
+        }
+        Err(e) => {
+            eprintln!("Error in parsing command line options: {e}.");
+            eprint!("{}", HELP_BRIEF);
+            std::process::exit(0);
+        }
+    };
+    
+    
+    // Nethuns options
+    let opt = NethunsSocketOptions {
+        numblocks: 1,
+        numpackets: 1024,
+        packetsize: 0,
+        timeout_ms: 0,
+        dir: NethunsCaptureDir::InOut,
+        capture: NethunsCaptureMode::ZeroCopy,
+        mode: NethunsSocketMode::RxTx,
+        promisc: false,
+        rxhash: false,
+        tx_qdisc_bypass: true,
+        ..Default::default()
+    };
+    
     
     // Setup and fill transmission rings for each socket
-    let socket: NethunsSocket<Local> = prepare_tx_socket(&args, opt, &payload).unwrap();
+    let socket = prepare_tx_socket(&args, opt, &PAYLOAD).unwrap();
     let mut pktid: usize = 0; // pos of next slot/packet to send in tx ring
     
     // Define atomic variable for program termination
@@ -82,62 +124,12 @@ fn main() {
         
         // Transmit packets from each socket
         if args.zerocopy {
-            transmit_zc(&args, &socket, &mut pktid, payload.len(), &total).unwrap();
+            transmit_zc(&args, &socket, &mut pktid, PAYLOAD.len(), &total)
+                .unwrap();
         } else {
-            transmit_c(&args, &socket, &payload, &total).unwrap();
+            transmit_c(&args, &socket, &PAYLOAD, &total).unwrap();
         }
     }
-}
-
-/// Configures the example for sending packets, by parsing the command line
-/// arguments and filling the default payload and nethuns options.
-///
-/// # Returns
-///
-/// A tuple containing the parsed arguments, the payload and the nethuns
-/// options.
-fn configure_example() -> (Args, [u8; 34], NethunsSocketOptions) {
-    // Parse options from command line
-    let args = match parse_args() {
-        Ok(a) => a,
-        Err(e) => {
-            eprintln!("Error in parsing command line options: {e}.");
-            eprint!("{}", HELP_BRIEF);
-            std::process::exit(0);
-        }
-    };
-    
-    println!(
-        "Test {} started with parameters: \n{:#?}",
-        env::args().next().unwrap(),
-        args
-    );
-    
-    // Define payload for packets
-    let payload: [u8; 34] = [
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0xbf, /* L`..UF.. */
-        0x97, 0xe2, 0xff, 0xae, 0x08, 0x00, 0x45, 0x00, /* ......E. */
-        0x00, 0x54, 0xb3, 0xf9, 0x40, 0x00, 0x40, 0x11, /* .T..@.@. */
-        0xf5, 0x32, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* .2...... */
-        0x07, 0x08,
-    ];
-    
-    // Nethuns options
-    let opt = NethunsSocketOptions {
-        numblocks: 1,
-        numpackets: 2048,
-        packetsize: 2048,
-        timeout_ms: 0,
-        dir: NethunsCaptureDir::InOut,
-        capture: NethunsCaptureMode::ZeroCopy,
-        mode: NethunsSocketMode::RxTx,
-        promisc: false,
-        rxhash: false,
-        tx_qdisc_bypass: true,
-        ..Default::default()
-    };
-    
-    (args, payload, opt)
 }
 
 /// Parses the command-line arguments and build an instance of the `Args`
@@ -191,7 +183,7 @@ fn prepare_tx_socket(
     args: &Args,
     opt: NethunsSocketOptions,
     payload: &[u8],
-) -> Result<NethunsSocket<Local>, anyhow::Error> {
+) -> Result<NethunsSocket, anyhow::Error> {
     // Open socket
     let mut socket = BindableNethunsSocket::open(opt)?
         .bind(&args.interface, NethunsQueue::Any)
@@ -218,7 +210,7 @@ fn prepare_tx_socket(
 /// Transmit packets in the tx ring (use optimized send, zero copy).
 fn transmit_zc(
     args: &Args,
-    socket: &NethunsSocket<Local>,
+    socket: &NethunsSocket,
     pktid: &mut usize,
     pkt_size: usize,
     total: &Arc<AtomicU64>,
@@ -246,7 +238,7 @@ fn transmit_zc(
 /// - `socket_idx`: Socket index.
 fn transmit_c(
     args: &Args,
-    socket: &NethunsSocket<Local>,
+    socket: &NethunsSocket,
     payload: &[u8],
     total: &Arc<AtomicU64>,
 ) -> Result<(), anyhow::Error> {

@@ -1,0 +1,28 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/recv_rust.txt",
+    cpp_data_filename: "../data/recv_cpp.txt",
+    output_filename: "../data/recv",
+    title: "Recv",
+}
+
+Rust stats:
+Stats {
+    mean: 21.08468906333333,
+    median: 21.026781149999998,
+    population_standard_deviation: 0.2846847351231507,
+    population_variance: 0.08104539841213845,
+    standard_deviation: 0.28708718054396504,
+    variance: 0.08241904923268317,
+}
+
+C++ stats:
+Stats {
+    mean: 21.570992368333332,
+    median: 21.58156885,
+    population_standard_deviation: 0.034020470895724186,
+    population_variance: 0.0011573924399668164,
+    standard_deviation: 0.03430756856705533,
+    variance: 0.001177009260983203,
+}
+
