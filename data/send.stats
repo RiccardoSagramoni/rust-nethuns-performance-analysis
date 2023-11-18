@@ -1,0 +1,28 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/send_rust.txt",
+    cpp_data_filename: "../data/send_cpp.txt",
+    output_filename: "../data/send",
+    title: "Send",
+}
+
+Rust stats:
+Stats {
+    mean: 11.572793841666668,
+    median: 11.569532550000002,
+    population_standard_deviation: 0.45405193887110573,
+    population_variance: 0.20616316319261033,
+    standard_deviation: 0.4578836687349528,
+    variance: 0.20965745409418,
+}
+
+C++ stats:
+Stats {
+    mean: 12.151766040000002,
+    median: 12.1814639,
+    population_standard_deviation: 0.4777547733032985,
+    population_variance: 0.22824962341408614,
+    standard_deviation: 0.48178653063267624,
+    variance: 0.23211826109907066,
+}
+

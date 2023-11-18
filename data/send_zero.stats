@@ -1,0 +1,28 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/send_zero_rust.txt",
+    cpp_data_filename: "../data/send_zero_cpp.txt",
+    output_filename: "../data/send_zero",
+    title: "Send (zerocopy)",
+}
+
+Rust stats:
+Stats {
+    mean: 14.02697001166667,
+    median: 14.175155199999999,
+    population_standard_deviation: 0.5204457092566861,
+    population_variance: 0.2708637362836951,
+    standard_deviation: 0.5248377340361157,
+    variance: 0.2754546470681645,
+}
+
+C++ stats:
+Stats {
+    mean: 14.404847040000002,
+    median: 14.666624,
+    population_standard_deviation: 0.8588019839368286,
+    population_variance: 0.7375408476138329,
+    standard_deviation: 0.8660493865515239,
+    variance: 0.7500415399462708,
+}
+

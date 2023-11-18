@@ -1,9 +1,5 @@
 # Ignore output of analysis script
-*.png
 *.txt
-*.html
-*.svg
-*.stats
 
 # DO NOT ignore labeled output
 !recv/**
