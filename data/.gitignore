@@ -3,6 +3,7 @@
 *.txt
 *.html
 *.svg
+*.stats
 
 # DO NOT ignore labeled output
 !recv/**

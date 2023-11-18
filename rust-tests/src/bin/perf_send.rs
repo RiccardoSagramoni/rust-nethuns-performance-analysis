@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
 
-use nethuns::sockets::{BindableNethunsSocket, Local, NethunsSocket};
+use nethuns::sockets::{BindableNethunsSocket, NethunsSocket};
 use nethuns::types::{
     NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
     NethunsSocketOptions,
@@ -84,8 +84,7 @@ fn main() {
     
     
     // Setup and fill transmission rings for each socket
-    let socket: NethunsSocket<Local> =
-        prepare_tx_socket(&args, opt, &PAYLOAD).unwrap();
+    let socket = prepare_tx_socket(&args, opt, &PAYLOAD).unwrap();
     let mut pktid: usize = 0; // pos of next slot/packet to send in tx ring
     
     // Define atomic variable for program termination
@@ -184,7 +183,7 @@ fn prepare_tx_socket(
     args: &Args,
     opt: NethunsSocketOptions,
     payload: &[u8],
-) -> Result<NethunsSocket<Local>, anyhow::Error> {
+) -> Result<NethunsSocket, anyhow::Error> {
     // Open socket
     let mut socket = BindableNethunsSocket::open(opt)?
         .bind(&args.interface, NethunsQueue::Any)
@@ -211,7 +210,7 @@ fn prepare_tx_socket(
 /// Transmit packets in the tx ring (use optimized send, zero copy).
 fn transmit_zc(
     args: &Args,
-    socket: &NethunsSocket<Local>,
+    socket: &NethunsSocket,
     pktid: &mut usize,
     pkt_size: usize,
     total: &Arc<AtomicU64>,
@@ -239,7 +238,7 @@ fn transmit_zc(
 /// - `socket_idx`: Socket index.
 fn transmit_c(
     args: &Args,
-    socket: &NethunsSocket<Local>,
+    socket: &NethunsSocket,
     payload: &[u8],
     total: &Arc<AtomicU64>,
 ) -> Result<(), anyhow::Error> {

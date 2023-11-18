@@ -1,0 +1,18 @@
+# started on Fri Nov 17 16:57:50 2023
+
+
+ Performance counter stats for './recv/nethuns-perf_recv vale0:0':
+
+        600.422,15 msec task-clock                       #    0,996 CPUs utilized             
+           234.413      context-switches                 #  390,414 /sec                      
+                 0      cpu-migrations                   #    0,000 /sec                      
+             1.274      page-faults                      #    2,122 /sec                      
+ 2.103.171.388.001      cycles                           #    3,503 GHz                       
+ 2.640.253.489.366      instructions                     #    1,26  insn per cycle            
+   290.464.253.902      branches                         #  483,767 M/sec                     
+     2.749.053.333      branch-misses                    #    0,95% of all branches           
+
+     603,118459704 seconds time elapsed
+
+     414,163237000 seconds user
+     186,100594000 seconds sys
