@@ -11,26 +11,17 @@
 #include <vector>
 
 
-/// manage command line options
-const struct option long_opts[] = {
-        {"help", no_argument, 0, 'h'},
-        {"interface", required_argument, 0, 'i'},
-        {"batch_size", required_argument, 0, 'b'},
-        {"sockets", required_argument, 0, 'n'},
-        {"multithreading", no_argument, 0, 'm'},
-        {"zerocopy", no_argument, 0, 'z'},
-        {0, 0, 0, 0}
-};
-
+// help message for command line usage
 const std::string help_brief = "Usage:  nethuns-send [ options ]\n" \
                                 "Use --help (or -h) to see full option list and a complete description.\n\n"
                                 "Required options: \n" \
                                 "\t\t\t[ -i <ifname> ] \t set network interface \n" \
                                 "Other options: \n" \
                                 "\t\t\t[ -b <batch_sz> ] \t set batch size \n" \
-                                "\t\t\t[ -n <nsock> ] \t\t set number of sockets \n" \
-                                "\t\t\t[ -m ] \t\t\t enable multithreading \n" \
-                                "\t\t\t[ -z ] \t\t\t enable send zero-copy \n";
+                                "\t\t\t[ -z ] \t\t\t enable send zero-copy \n" \
+                                "\t\t\t[ -n ] \t\t\t set number of packets \n" \
+                                "\t\t\t[ -s ] \t\t\t set packet size \n";
+                                
 
 // nethuns socket
 nethuns_socket_t* out = new nethuns_socket_t();
@@ -42,6 +33,8 @@ uint64_t pktid = 0;
 std::string interface = "";
 int batch_size = 1;
 bool zerocopy = false;
+unsigned int numpackets = 1024;
+unsigned int packetsize = 0;
 #define PAYLOAD_LEN    34
 
 // stats collection
@@ -73,6 +66,9 @@ void meter() {
     	std::cout << total.exchange(0) << std::endl;
     }
 }
+
+
+void parse_command_line(int argc, char *argv[]);
 
 
 // setup and fill transmission ring
@@ -142,50 +138,15 @@ int main(int argc, char *argv[])
         0x07, 0x08
     };
     
-    // parse options from command line
-    int opt = 0;
-    int optidx = 0;
-    opterr = 1;     // turn on/off getopt error messages
-    if (argc > 1 && argc < 10) {
-        while ((opt = getopt_long(argc, argv, "hi:b:n:mz", long_opts, &optidx)) != -1) {
-            switch (opt) {
-            case 'h':
-                std::cout << help_brief << std::endl;
-                return 0;
-            case 'i':
-                if (optarg)
-                    interface = optarg;
-                break;
-            case 'b':
-                if (optarg)
-                    batch_size = atoi(optarg);
-                break;
-            case 'z':
-                zerocopy = true;
-                break;
-            default:
-                std::cerr << "Error in parsing command line options.\n" << help_brief << std::endl;
-                return 1;
-            }
-        }
-    } else {
-        std::cerr << help_brief << std::endl;
-        return 1;
-    }
-
-    std::cout << "\nTest " << argv[0] << " started with parameters \n"
-                            << "* interface: " << interface << " \n"
-                            << "* batch_size: " << batch_size << " \n"
-                            << "* zero-copy: " << ((zerocopy) ? " ON \n" : " OFF \n")
-                            << std::endl;
+    parse_command_line(argc, argv);
     
     signal(SIGINT, terminate);  // register termination signal
-
+    
     // nethuns options
     netopt = {
         .numblocks       = 1
-    ,   .numpackets      = 1024
-    ,   .packetsize      = 0
+    ,   .numpackets      = numpackets
+    ,   .packetsize      = packetsize
     ,   .timeout_ms      = 0
     ,   .dir             = nethuns_in_out
     ,   .capture         = nethuns_cap_zero_copy
@@ -199,10 +160,10 @@ int main(int argc, char *argv[])
     ,   .reuse_maps      = false
     ,   .pin_dir         = nullptr
     };
-       
+    
     // Init nethuns socket
     fill_tx_ring(payload, PAYLOAD_LEN);
-        
+    
     // set up timer for stopping data collection after 10 minutes
     std::thread stop_th(
         terminate_program, 
@@ -210,7 +171,7 @@ int main(int argc, char *argv[])
     );
     
     std::thread meter_th(meter);
-     
+    
     try {
         while (!term.load(std::memory_order_relaxed)) {            
             if (zerocopy) {
@@ -233,4 +194,58 @@ int main(int argc, char *argv[])
     
     nethuns_close(out);
     return 0;
+}
+
+
+void parse_command_line(int argc, char *argv[])
+{
+    // parse options from command line
+    int opt = 0;
+    int optidx = 0;
+    opterr = 1;     // turn on/off getopt error messages
+    if (argc > 1 && argc < 10) {
+        while ((opt = getopt_long(argc, argv, "hi:b:mzn:s:", NULL, &optidx)) != -1) {
+            switch (opt) {
+            case 'h':
+                std::cout << help_brief << std::endl;
+                std::exit(0);
+                return;
+            case 'i':
+                if (optarg)
+                    interface = optarg;
+                break;
+            case 'b':
+                if (optarg)
+                    batch_size = atoi(optarg);
+                break;
+            case 'z':
+                zerocopy = true;
+                break;
+            case 'n':
+                if (optarg)
+                    numpackets = atoi(optarg);
+                break;
+            case 's':
+                if (optarg)
+                    packetsize = atoi(optarg);
+                break;
+            default:
+                std::cerr << "Error in parsing command line options.\n" << help_brief << std::endl;
+                std::exit(-1);
+                return;
+            }
+        }
+    } else {
+        std::cerr << help_brief << std::endl;
+        std::exit(-1);
+        return;
+    }
+
+    std::cout << "\nTest " << argv[0] << " started with parameters \n"
+              << "* interface: " << interface << " \n"
+              << "* batch_size: " << batch_size << " \n"
+              << "* zero-copy: " << ((zerocopy) ? " ON \n" : " OFF \n")
+              << "* numpackets: " << numpackets << " \n"
+              << "* packetsize: " << packetsize << " \n"
+              << std::endl;
 }

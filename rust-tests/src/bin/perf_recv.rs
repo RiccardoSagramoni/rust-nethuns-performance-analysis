@@ -17,16 +17,50 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 const METER_DURATION_SECS: u64 = 10 * 60 + 1;
 const METER_RATE_SECS: u64 = 10;
 
+const HELP_BRIEF: &str = "\
+Usage:  recv [ options ]
+Use --help (or -h) to see full option list and a complete description
+
+Required options:
+            [ -i <ifname> ]                     set network interface
+Other options:
+            [ --numpackets <num_packets> ]      set number of packets (default 1024)
+            [ --packetsize <packet_size> ]      set packet size (default 0)
+";
+
+
+#[derive(Debug)]
+struct Args {
+    interface: String,
+    numpackets: u32,
+    packetsize: u32,
+}
+
+
 fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
     
-    let dev = env::args().nth(1).expect("Usage: ./bench_recv <dev>");
+    let args = match parse_args() {
+        Ok(args) => {
+            println!(
+                "Test {} started with parameters: \n{:#?}",
+                env::args().next().unwrap(),
+                args
+            );
+            args
+        }
+        Err(e) => {
+            eprintln!("Error in parsing command line options: {e}.");
+            eprint!("{}", HELP_BRIEF);
+            return;
+        }
+    };
     
     let nethuns_opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: 1024,
-        packetsize: 0,
+        numpackets: args.numpackets,
+        packetsize: args.packetsize,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
@@ -40,7 +74,7 @@ fn main() {
     // Open sockets
     let socket = BindableNethunsSocket::open(nethuns_opt)
         .unwrap()
-        .bind(&dev, NethunsQueue::Any)
+        .bind(&args.interface, NethunsQueue::Any)
         .unwrap();
     
     // Define atomic variable for program termination
@@ -93,6 +127,32 @@ fn main() {
     }
 }
 
+
+fn parse_args() -> anyhow::Result<Args> {
+    let mut pargs = pico_args::Arguments::from_env();
+    
+    // Help has a higher priority and should be handled separately.
+    if pargs.contains(["-h", "--help"]) {
+        print!("{}", HELP_BRIEF);
+        std::process::exit(0);
+    }
+    
+    let args = Args {
+        interface: pargs.value_from_str("-i")?,
+        numpackets: pargs.value_from_str("--numpackets").unwrap_or(1024),
+        packetsize: pargs.value_from_str("--packetsize").unwrap_or(0),
+    };
+    
+    // It's up to the caller what to do with the remaining arguments.
+    let remaining = pargs.finish();
+    if !remaining.is_empty() {
+        eprintln!("Warning: unused arguments left: {:?}.", remaining);
+    }
+    
+    Ok(args)
+}
+
+
 /// Set an handler for the SIGINT signal (Ctrl-C),
 /// which will notify the other threads
 /// to gracefully stop their execution.
@@ -103,6 +163,7 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
     })
     .expect("Error setting Ctrl-C handler");
 }
+
 
 /// Collect stats about the received packets every `METER_RATE_SECS` seconds
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {

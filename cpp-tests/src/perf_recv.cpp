@@ -16,6 +16,16 @@
 #include <vector>
 
 
+// help message for command line usage
+const std::string help_brief = "Usage:  nethuns-send [ options ]\n" \
+                                "Use --help (or -h) to see full option list and a complete description.\n\n"
+                                "Required options: \n" \
+                                "\t\t\t[ -i <ifname> ] \t set network interface \n" \
+                                "Other options: \n" \
+                                "\t\t\t[ -n ] \t\t\t set number of packets \n" \
+                                "\t\t\t[ -s ] \t\t\t set packet size \n";
+
+
 // nethuns socket
 nethuns_socket_t* my_socket;
 nethuns_socket_options netopt;
@@ -23,6 +33,8 @@ char* errbuf;
 
 // configuration
 std::string interface = "";
+unsigned int numpackets = 1024;
+unsigned int packetsize = 0;
 
 // stats collection
 std::atomic<uint64_t> total(0);
@@ -55,14 +67,12 @@ void meter() {
 }
 
 
+void parse_command_line(int argc, char *argv[]);
+
+
 int main(int argc, char *argv[])
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <interface>" << std::endl;
-        return 1;
-    }
-    
-    interface = argv[1];
+    parse_command_line(argc, argv);
     
     signal(SIGINT, terminate);  // register termination signal
     
@@ -70,8 +80,8 @@ int main(int argc, char *argv[])
     netopt =
     {
         .numblocks       = 1
-    ,   .numpackets      = 1024
-    ,   .packetsize      = 0
+    ,   .numpackets      = numpackets
+    ,   .packetsize      = packetsize
     ,   .timeout_ms      = 0
     ,   .dir             = nethuns_in_out
     ,   .capture         = nethuns_cap_zero_copy
@@ -138,4 +148,49 @@ int main(int argc, char *argv[])
     
     nethuns_close(my_socket);
     return 0;
+}
+
+
+void parse_command_line(int argc, char *argv[])
+{
+    // parse options from command line
+    int opt = 0;
+    int optidx = 0;
+    opterr = 1;     // turn on/off getopt error messages
+    if (argc > 1 && argc < 10) {
+        while ((opt = getopt_long(argc, argv, "hi:n:s:", NULL, &optidx)) != -1) {
+            switch (opt) {
+            case 'h':
+                std::cout << help_brief << std::endl;
+                std::exit(0);
+                return;
+            case 'i':
+                if (optarg)
+                    interface = optarg;
+                break;
+            case 'n':
+                if (optarg)
+                    numpackets = atoi(optarg);
+                break;
+            case 's':
+                if (optarg)
+                    packetsize = atoi(optarg);
+                break;
+            default:
+                std::cerr << "Error in parsing command line options.\n" << help_brief << std::endl;
+                std::exit(-1);
+                return;
+            }
+        }
+    } else {
+        std::cerr << help_brief << std::endl;
+        std::exit(-1);
+        return;
+    }
+
+    std::cout << "\nTest " << argv[0] << " started with parameters \n"
+              << "* interface: " << interface << " \n"
+              << "* numpackets: " << numpackets << " \n"
+              << "* packetsize: " << packetsize << " \n"
+              << std::endl;
 }
