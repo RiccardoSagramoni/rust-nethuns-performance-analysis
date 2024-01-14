@@ -16,6 +16,16 @@
 #include <vector>
 
 
+// help message for command line usage
+const std::string help_brief = "Usage:  nethuns-send [ options ]\n" \
+								"Use --help (or -h) to see full option list and a complete description.\n\n"
+								"Required options: \n" \
+								"\t\t\t[ -i <ifname> ] \t set network interface \n" \
+								"Other options: \n" \
+								"\t\t\t[ -n ] \t\t\t set number of packets \n" \
+								"\t\t\t[ -s ] \t\t\t set packet size \n";
+
+
 // nethuns socket
 nethuns_socket_t* my_socket;
 nethuns_socket_options netopt;
@@ -23,6 +33,8 @@ char* errbuf;
 
 // configuration
 std::string interface = "";
+unsigned int numpackets = 1024;
+unsigned int packetsize = 0;
 
 // stats collection
 std::atomic<uint64_t> total(0);
@@ -36,106 +48,149 @@ std::atomic<bool> term(false);
 // termination signal handler
 void terminate(int exit_signal)
 {
-    (void)exit_signal;
-    term.store(true, std::memory_order_relaxed);
+	(void)exit_signal;
+	term.store(true, std::memory_order_relaxed);
 }
 
 void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
-    std::this_thread::sleep_until(stop_timestamp);
-    term.store(true, std::memory_order_relaxed);
+	std::this_thread::sleep_until(stop_timestamp);
+	term.store(true, std::memory_order_relaxed);
 }
 
 void meter() {
-    auto now = std::chrono::system_clock::now();
-    while (!term.load(std::memory_order_relaxed)) {
-        now += std::chrono::seconds(METER_RATE_SECS);
-        std::this_thread::sleep_until(now);
-    	std::cout << total.exchange(0) << std::endl;
-    }
+	auto now = std::chrono::system_clock::now();
+	while (!term.load(std::memory_order_relaxed)) {
+		now += std::chrono::seconds(METER_RATE_SECS);
+		std::this_thread::sleep_until(now);
+		std::cout << total.exchange(0) << std::endl;
+	}
 }
+
+
+void parse_command_line(int argc, char *argv[]);
 
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <interface>" << std::endl;
-        return 1;
-    }
-    
-    interface = argv[1];
-    
-    signal(SIGINT, terminate);  // register termination signal
-    
-    // nethuns options
-    netopt =
-    {
-        .numblocks       = 1
-    ,   .numpackets      = 1024
-    ,   .packetsize      = 0
-    ,   .timeout_ms      = 0
-    ,   .dir             = nethuns_in_out
-    ,   .capture         = nethuns_cap_zero_copy
-    ,   .mode            = nethuns_socket_rx_tx
-    ,   .promisc         = false
-    ,   .rxhash          = false
-    ,   .tx_qdisc_bypass = true
-    ,   .xdp_prog        = nullptr
-    ,   .xdp_prog_sec    = nullptr
-    ,   .xsk_map_name    = nullptr
-    ,   .reuse_maps      = false
-    ,   .pin_dir         = nullptr
-    };
-    
-    my_socket = new nethuns_socket_t();
-    errbuf = new char[NETHUNS_ERRBUF_SIZE];
-    
-    // setup sockets and rings
-    my_socket = nethuns_open(&netopt, errbuf);
-    if (!my_socket) {
-        throw std::runtime_error(errbuf);
-    }
-    
-    if (nethuns_bind(my_socket, interface.c_str(), NETHUNS_ANY_QUEUE) < 0) {
-        throw nethuns_exception(my_socket);
-    }
-    
-    // set up timer for stopping data collection after 10 minutes
-    std::thread stop_th(
-        terminate_program, 
-        std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
-    );
-    
-    // start thread for stats collection
-    std::thread meter_th(meter);
-    
-    // case single thread (main) with generic number of sockets
-    try {
-        while (!term.load(std::memory_order_relaxed)) {            
-            const nethuns_pkthdr_t *pkthdr = nullptr;
-            const unsigned char *frame = nullptr;
-            uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
-            
-            if (pkt_id == NETHUNS_ERROR) {
-                throw nethuns_exception(my_socket);
-            }
-            
-            if (pkt_id > 0) {
-                // process valid packet here
-                total.fetch_add(1);
-                nethuns_rx_release(my_socket, pkt_id);
-            }
-        }
-    } catch(nethuns_exception &e) {
-        if (e.sock) {
-            nethuns_close(e.sock);
-        }
-        std::cerr << e.what() << std::endl;
-        return 1;
-    } catch(std::exception &e) {
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
-    
-    nethuns_close(my_socket);
-    return 0;
+	parse_command_line(argc, argv);
+	
+	signal(SIGINT, terminate);  // register termination signal
+	
+	// nethuns options
+	netopt =
+	{
+		.numblocks       = 1
+	,   .numpackets      = numpackets
+	,   .packetsize      = packetsize
+	,   .timeout_ms      = 0
+	,   .dir             = nethuns_in_out
+	,   .capture         = nethuns_cap_zero_copy
+	,   .mode            = nethuns_socket_rx_tx
+	,   .promisc         = false
+	,   .rxhash          = false
+	,   .tx_qdisc_bypass = true
+	,   .xdp_prog        = nullptr
+	,   .xdp_prog_sec    = nullptr
+	,   .xsk_map_name    = nullptr
+	,   .reuse_maps      = false
+	,   .pin_dir         = nullptr
+	};
+	
+	my_socket = new nethuns_socket_t();
+	errbuf = new char[NETHUNS_ERRBUF_SIZE];
+	
+	// setup sockets and rings
+	my_socket = nethuns_open(&netopt, errbuf);
+	if (!my_socket) {
+		throw std::runtime_error(errbuf);
+	}
+	
+	if (nethuns_bind(my_socket, interface.c_str(), NETHUNS_ANY_QUEUE) < 0) {
+		throw nethuns_exception(my_socket);
+	}
+	
+	// set up timer for stopping data collection after 10 minutes
+	std::thread stop_th(
+		terminate_program, 
+		std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
+	);
+	
+	// start thread for stats collection
+	std::thread meter_th(meter);
+	
+	// case single thread (main) with generic number of sockets
+	try {
+		while (!term.load(std::memory_order_relaxed)) {            
+			const nethuns_pkthdr_t *pkthdr = nullptr;
+			const unsigned char *frame = nullptr;
+			uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
+			
+			if (pkt_id == NETHUNS_ERROR) {
+				throw nethuns_exception(my_socket);
+			}
+			
+			if (pkt_id > 0) {
+				// process valid packet here
+				total.fetch_add(1);
+				nethuns_rx_release(my_socket, pkt_id);
+			}
+		}
+	} catch(nethuns_exception &e) {
+		if (e.sock) {
+			nethuns_close(e.sock);
+		}
+		std::cerr << e.what() << std::endl;
+		return 1;
+	} catch(std::exception &e) {
+		std::cerr << e.what() << std::endl;
+		return 1;
+	}
+	
+	nethuns_close(my_socket);
+	return 0;
+}
+
+
+void parse_command_line(int argc, char *argv[])
+{
+	// parse options from command line
+	int opt = 0;
+	int optidx = 0;
+	opterr = 1;     // turn on/off getopt error messages
+	if (argc > 1 && argc < 10) {
+		while ((opt = getopt_long(argc, argv, "hi:n:s:", NULL, &optidx)) != -1) {
+			switch (opt) {
+			case 'h':
+				std::cout << help_brief << std::endl;
+				std::exit(0);
+				return;
+			case 'i':
+				if (optarg)
+					interface = optarg;
+				break;
+			case 'n':
+				if (optarg)
+					numpackets = atoi(optarg);
+				break;
+			case 's':
+				if (optarg)
+					packetsize = atoi(optarg);
+				break;
+			default:
+				std::cerr << "Error in parsing command line options.\n" << help_brief << std::endl;
+				std::exit(-1);
+				return;
+			}
+		}
+	} else {
+		std::cerr << help_brief << std::endl;
+		std::exit(-1);
+		return;
+	}
+
+	std::cout << "\nTest " << argv[0] << " started with parameters \n"
+			  << "* interface: " << interface << " \n"
+			  << "* numpackets: " << numpackets << " \n"
+			  << "* packetsize: " << packetsize << " \n"
+			  << std::endl;
 }

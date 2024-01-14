@@ -79,7 +79,8 @@
         11.9052992,
         11.5716945
       ],
-      "name": "Rust Nethuns"
+      "name": "Rust Nethuns",
+      "whiskerwidth": 0.2
     },
     {
       "type": "box",
@@ -145,21 +146,32 @@
         12.1456544,
         12.137453599999999
       ],
-      "name": "C++ Nethuns"
+      "name": "C Nethuns",
+      "whiskerwidth": 0.2
     }
   ],
   "layout": {
     "title": {
-      "text": "Send"
+      "text": "\u003cb\u003eTransmission\u003c/b\u003e",
+      "font": {
+        "size": 24,
+        "color": "black"
+      }
     },
     "showlegend": false,
     "width": 1000,
     "height": 500,
+    "xaxis": {
+      "color": "black"
+    },
     "yaxis": {
+      "color": "black",
       "title": {
         "text": "Throughput (Mpps)"
-      }
-    }
+      },
+      "dtick": 0.2
+    },
+    "boxgap": 0.5
   },
   "config": {}
 });

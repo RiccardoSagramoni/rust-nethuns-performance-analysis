@@ -79,7 +79,8 @@
         21.0313155,
         21.0443537
       ],
-      "name": "Rust Nethuns"
+      "name": "Rust Nethuns",
+      "whiskerwidth": 0.2
     },
     {
       "type": "box",
@@ -145,21 +146,32 @@
         21.583146199999998,
         21.568143600000003
       ],
-      "name": "C++ Nethuns"
+      "name": "C Nethuns",
+      "whiskerwidth": 0.2
     }
   ],
   "layout": {
     "title": {
-      "text": "Recv"
+      "text": "\u003cb\u003eReception\u003c/b\u003e",
+      "font": {
+        "size": 24,
+        "color": "black"
+      }
     },
     "showlegend": false,
     "width": 1000,
     "height": 500,
+    "xaxis": {
+      "color": "black"
+    },
     "yaxis": {
+      "color": "black",
       "title": {
         "text": "Throughput (Mpps)"
-      }
-    }
+      },
+      "dtick": 0.2
+    },
+    "boxgap": 0.5
   },
   "config": {}
 });

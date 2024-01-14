@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::{env, mem};
 
-use plotly::common::Title;
+use plotly::common::{Font, Title};
 use plotly::layout::Axis;
 use plotly::{BoxPlot, ImageFormat, Layout, Plot};
 
@@ -108,8 +108,16 @@ fn generate_box_plot(
 ) {
     let mut plot = Plot::new();
     
-    plot.add_trace(BoxPlot::new(rust_data).name("Rust Nethuns"));
-    plot.add_trace(BoxPlot::new(cpp_data).name("C++ Nethuns"));
+    plot.add_trace(
+        BoxPlot::new(rust_data)
+            .name("Rust Nethuns")
+            .whisker_width(0.2),
+    );
+    plot.add_trace(
+        BoxPlot::new(cpp_data)
+            .name("C Nethuns")
+            .whisker_width(0.2),
+    );
     
     plot.set_layout(generate_layout(title));
     
@@ -124,7 +132,17 @@ fn generate_layout(title: &str) -> Layout {
     Layout::new()
         .height(500)
         .width(1000)
-        .y_axis(Axis::new().title(Title::new("Throughput (Mpps)")))
+        .y_axis(
+            Axis::new()
+                .title(Title::new("Throughput (Mpps)"))
+                .color("black")
+                .dtick(0.2),
+        )
+        .x_axis(Axis::new().color("black"))
         .show_legend(false)
-        .title(Title::new(title))
+        .title(
+            Title::new(format!("<b>{title}</b>").as_str())
+                .font(Font::new().color("black").size(24)),
+        )
+        .box_gap(0.5)
 }

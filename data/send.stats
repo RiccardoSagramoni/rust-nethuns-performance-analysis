@@ -3,7 +3,7 @@ Config {
     rust_data_filename: "../data/send_rust.txt",
     cpp_data_filename: "../data/send_cpp.txt",
     output_filename: "../data/send",
-    title: "Send",
+    title: "Transmission",
 }
 
 Rust stats:

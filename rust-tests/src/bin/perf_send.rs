@@ -22,6 +22,9 @@ struct Args {
     interface: String,
     batch_size: u32,
     zerocopy: bool,
+    
+    numpackets: u32,
+    packetsize: u32,
 }
 
 
@@ -30,10 +33,12 @@ Usage:  send [ options ]
 Use --help (or -h) to see full option list and a complete description
 
 Required options:
-            [ -i <ifname> ]     set network interface
+            [ -i <ifname> ]                     set network interface
 Other options:
-            [ -b <batch_sz> ]   set batch size
-            [ -z ]              enable send zero-copy
+            [ -b <batch_sz> ]                   set batch size
+            [ -z ]                              enable send zero-copy
+            [ --numpackets <num_packets> ]      set number of packets (default 1024)
+            [ --packetsize <packet_size> ]      set packet size (default 0)
 ";
 
 const PAYLOAD: [u8; 34] = [
@@ -62,7 +67,7 @@ fn main() {
         Err(e) => {
             eprintln!("Error in parsing command line options: {e}.");
             eprint!("{}", HELP_BRIEF);
-            std::process::exit(0);
+            return;
         }
     };
     
@@ -70,8 +75,8 @@ fn main() {
     // Nethuns options
     let opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: 1024,
-        packetsize: 0,
+        numpackets: args.numpackets,
+        packetsize: args.packetsize,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
@@ -156,6 +161,8 @@ fn parse_args() -> Result<Args, anyhow::Error> {
         interface: pargs.value_from_str(["-i", "--interface"])?,
         batch_size: pargs.value_from_str(["-b", "--batch_size"]).unwrap_or(1),
         zerocopy: pargs.contains(["-z", "--zerocopy"]),
+        numpackets: pargs.value_from_str("--numpackets").unwrap_or(1024),
+        packetsize: pargs.value_from_str("--packetsize").unwrap_or(0),
     };
     
     // It's up to the caller what to do with the remaining arguments.

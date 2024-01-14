@@ -3,7 +3,7 @@ Config {
     rust_data_filename: "../data/recv_rust.txt",
     cpp_data_filename: "../data/recv_cpp.txt",
     output_filename: "../data/recv",
-    title: "Recv",
+    title: "Reception",
 }
 
 Rust stats:
