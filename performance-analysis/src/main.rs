@@ -113,11 +113,7 @@ fn generate_box_plot(
             .name("Rust Nethuns")
             .whisker_width(0.2),
     );
-    plot.add_trace(
-        BoxPlot::new(cpp_data)
-            .name("C Nethuns")
-            .whisker_width(0.2),
-    );
+    plot.add_trace(BoxPlot::new(cpp_data).name("C Nethuns").whisker_width(0.2));
     
     plot.set_layout(generate_layout(title));
     
@@ -134,11 +130,13 @@ fn generate_layout(title: &str) -> Layout {
         .width(1000)
         .y_axis(
             Axis::new()
-                .title(Title::new("Throughput (Mpps)"))
+                .title(
+                    Title::new("Throughput (Mpps)").font(Font::new().size(16)),
+                )
                 .color("black")
                 .dtick(0.2),
         )
-        .x_axis(Axis::new().color("black"))
+        .x_axis(Axis::new().color("black").tick_font(Font::new().size(16)))
         .show_legend(false)
         .title(
             Title::new(format!("<b>{title}</b>").as_str())
