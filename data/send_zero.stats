@@ -3,7 +3,7 @@ Config {
     rust_data_filename: "../data/send_zero_rust.txt",
     cpp_data_filename: "../data/send_zero_cpp.txt",
     output_filename: "../data/send_zero",
-    title: "Send (zerocopy)",
+    title: "Transmission (zero-copy)",
 }
 
 Rust stats:
