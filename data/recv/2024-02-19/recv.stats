@@ -1,0 +1,28 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/recv_rust.txt",
+    cpp_data_filename: "../data/recv_cpp.txt",
+    output_filename: "../data/recv",
+    title: "Reception (VALE)",
+}
+
+Rust stats:
+Stats {
+    mean: 22.06083899166666,
+    median: 22.0622846,
+    population_standard_deviation: 0.06113519280099209,
+    population_variance: 0.003737511798814475,
+    standard_deviation: 0.06165111074767023,
+    variance: 0.0038008594564215,
+}
+
+C++ stats:
+Stats {
+    mean: 21.92952765833334,
+    median: 21.926387050000002,
+    population_standard_deviation: 0.04836662075658994,
+    population_variance: 0.002339330003411797,
+    standard_deviation: 0.04877478513009128,
+    variance: 0.0023789796644865732,
+}
+
