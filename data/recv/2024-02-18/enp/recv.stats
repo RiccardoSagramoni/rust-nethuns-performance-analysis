@@ -1,0 +1,28 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/recv_rust.txt",
+    cpp_data_filename: "../data/recv_cpp.txt",
+    output_filename: "../data/recv",
+    title: "Reception (Ethernet)",
+}
+
+Rust stats:
+Stats {
+    mean: 14.87427685,
+    median: 14.873780400000001,
+    population_standard_deviation: 0.005643113353415709,
+    population_variance: 3.1844728319498687e-5,
+    standard_deviation: 0.005690735407436924,
+    variance: 3.2384469477456294e-5,
+}
+
+C++ stats:
+Stats {
+    mean: 14.840296579999997,
+    median: 14.8417572,
+    population_standard_deviation: 0.008658584110384376,
+    population_variance: 7.497107879660079e-5,
+    standard_deviation: 0.008731653626169022,
+    variance: 7.624177504739064e-5,
+}
+
