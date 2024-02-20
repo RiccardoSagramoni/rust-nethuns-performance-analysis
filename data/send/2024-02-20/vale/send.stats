@@ -1,0 +1,29 @@
+Start generating plots with the following configuration:
+Config {
+    rust_data_filename: "../data/send_rust.txt",
+    cpp_data_filename: "../data/send_cpp.txt",
+    output_filename: "../data/send",
+    title: "Transmission (Ethernet)",
+}
+
+Rust stats:
+Stats {
+    mean: 14.482600771666673,
+    median: 14.485877949999999,
+    population_standard_deviation: 0.023598051957482193,
+    population_variance: 0.0005568680561880291,
+    standard_deviation: 0.023797195167043,
+    variance: 0.0005663064978183348,
+}
+
+C++ stats:
+Stats {
+    mean: 14.477445525000002,
+    median: 14.4566163,
+    population_standard_deviation: 0.0699750873416667,
+    population_variance: 0.004896512848473884,
+    standard_deviation: 0.07056560487708127,
+    variance: 0.004979504591668357,
+}
+
+Ratio Rust / C++: 1.0020241008955877
