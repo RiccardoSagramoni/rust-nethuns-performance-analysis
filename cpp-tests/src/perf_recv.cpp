@@ -62,7 +62,7 @@ void meter() {
 	while (!term.load(std::memory_order_relaxed)) {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0) << std::endl;
+		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
 	}
 }
 
@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
 	
 	// case single thread (main) with generic number of sockets
 	try {
+		uint64_t local_total = 0;
+		
 		while (!term.load(std::memory_order_relaxed)) {            
 			const nethuns_pkthdr_t *pkthdr = nullptr;
 			const unsigned char *frame = nullptr;
@@ -130,8 +132,13 @@ int main(int argc, char *argv[])
 			}
 			
 			if (pkt_id > 0) {
-				// process valid packet here
-				total.fetch_add(1);
+				// Count valid packet
+				local_total++;
+				if (local_total > 1000) {
+					total.fetch_add(local_total, std::memory_order_acq_rel);
+					local_total = 0;
+				}
+				
 				nethuns_rx_release(my_socket, pkt_id);
 			}
 		}

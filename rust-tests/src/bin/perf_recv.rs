@@ -108,6 +108,8 @@ fn main() {
         })
     };
     
+    let mut local_total: u64 = 0;
+    
     // Start receiving
     loop {
         // Check condition for program termination
@@ -117,11 +119,18 @@ fn main() {
         
         match socket.recv() {
             Ok(_) => {
-                total.fetch_add(1, Ordering::SeqCst);
+                local_total += 1;
+                
+                if local_total > 1_000 {
+                    total.fetch_add(local_total, Ordering::AcqRel);
+                    local_total = 0;
+                }
             }
+            
             Err(NethunsRecvError::InUse)
             | Err(NethunsRecvError::NoPacketsAvailable)
             | Err(NethunsRecvError::PacketFiltered) => (),
+            
             Err(e) => panic!("Error: {e}"),
         }
     }
@@ -183,7 +192,7 @@ fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
         }
         now = next_sys_time;
         
-        let total = total.swap(0, Ordering::SeqCst);
+        let total = total.swap(0, Ordering::AcqRel);
         
         // Print number of sent packets
         println!("{}", total);

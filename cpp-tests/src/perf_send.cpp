@@ -63,7 +63,7 @@ void meter() {
 	while (!term.load(std::memory_order_relaxed)) {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0) << std::endl;
+		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
 	}
 }
 
@@ -93,33 +93,6 @@ inline void fill_tx_ring(const unsigned char *payload, int pkt_size)
 		}
 		pktid = 0;                                          // first position (slot) in tx ring to be transmitted
 	}
-}
-
-// transmit packets in the tx ring (use optimized send, zero copy)
-inline void transmit_zc(int pkt_size)
-{
-	// prepare batch
-	for (int n = 0; n < batch_size; n++) {
-		if (nethuns_send_slot(out, pktid, pkt_size) <= 0) {
-			break;
-		}
-		pktid++;
-		total++;
-	}
-	nethuns_flush(out);             // send batch
-}
-
-// transmit packets in the tx ring (use classic send, copy)
-inline void transmit_c(const unsigned char *payload, int pkt_size)
-{
-	// prepare batch
-	for (int n = 0; n < batch_size; n++) {
-		if (nethuns_send(out, payload, pkt_size) <= 0) {
-			break;
-		}
-		total++;
-	}
-	nethuns_flush(out);             // send batch
 }
 
 inline std::chrono::system_clock::time_point next_meter_log() {
@@ -173,12 +146,24 @@ int main(int argc, char *argv[])
 	std::thread meter_th(meter);
 	
 	try {
-		while (!term.load(std::memory_order_relaxed)) {            
-			if (zerocopy) {
-				transmit_zc(PAYLOAD_LEN);
+		uint64_t local_total = 0;
+		
+		while (!term.load(std::memory_order_relaxed)) {     
+			// Prepare batch
+			for (int n = 0; n < batch_size; n++) {
+				if (nethuns_send(out, payload, PAYLOAD_LEN) <= 0) {
+					break;
+				}
+				local_total++;
 			}
-			else {
-				transmit_c(payload, PAYLOAD_LEN);
+			
+			// Send batch
+			nethuns_flush(out);
+			
+			// Update the total count
+			if (local_total > 1000) {
+				total.fetch_add(local_total, std::memory_order_acq_rel);
+				local_total = 0;
 			}
 		}
 	} catch(nethuns_exception &e) {

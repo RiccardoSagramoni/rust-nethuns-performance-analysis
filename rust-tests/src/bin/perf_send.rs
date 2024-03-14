@@ -90,7 +90,6 @@ fn main() {
     
     // Setup and fill transmission rings for each socket
     let socket = prepare_tx_socket(&args, opt, &PAYLOAD).unwrap();
-    let mut pktid: usize = 0; // pos of next slot/packet to send in tx ring
     
     // Define atomic variable for program termination
     let term = Arc::new(AtomicBool::new(false));
@@ -121,18 +120,29 @@ fn main() {
         })
     };
     
+    let mut local_total: u64 = 0;
+    
     loop {
         // Check condition for program termination
         if term.load(Ordering::Relaxed) {
             break;
         }
         
-        // Transmit packets from each socket
-        if args.zerocopy {
-            transmit_zc(&args, &socket, &mut pktid, PAYLOAD.len(), &total)
-                .unwrap();
-        } else {
-            transmit_c(&args, &socket, &PAYLOAD, &total).unwrap();
+        // Prepare batch
+        for _ in 0..args.batch_size {
+            if socket.send(&PAYLOAD).is_err() {
+                break;
+            }
+            local_total += 1;
+        }
+        
+        // Send batch
+        socket.flush().expect("flush failed");
+        
+        // Update global counter
+        if local_total > 1_000 {
+            total.fetch_add(local_total, Ordering::AcqRel);
+            local_total = 0;
         }
     }
 }
@@ -214,52 +224,6 @@ fn prepare_tx_socket(
     Ok(socket)
 }
 
-/// Transmit packets in the tx ring (use optimized send, zero copy).
-fn transmit_zc(
-    args: &Args,
-    socket: &NethunsSocket,
-    pktid: &mut usize,
-    pkt_size: usize,
-    total: &Arc<AtomicU64>,
-) -> Result<(), anyhow::Error> {
-    // Prepare batch
-    for _ in 0..args.batch_size {
-        if socket.send_slot(*pktid, pkt_size).is_err() {
-            break;
-        }
-        *pktid += 1;
-        total.fetch_add(1, Ordering::SeqCst);
-    }
-    // Send batch
-    socket.flush()?;
-    Ok(())
-}
-
-/// Transmit packets in the tx ring (use classic send, copy)
-///
-/// # Arguments
-/// - `args`: Parsed command-line arguments.
-/// - `socket`: Socket descriptor.
-/// - `payload`: Payload for packets.
-/// - `totals`: Vector for storing the number of packets sent from each socket.
-/// - `socket_idx`: Socket index.
-fn transmit_c(
-    args: &Args,
-    socket: &NethunsSocket,
-    payload: &[u8],
-    total: &Arc<AtomicU64>,
-) -> Result<(), anyhow::Error> {
-    // Prepare batch
-    for _ in 0..args.batch_size {
-        if socket.send(payload).is_err() {
-            break;
-        }
-        total.fetch_add(1, Ordering::SeqCst);
-    }
-    // Send batch
-    socket.flush()?;
-    Ok(())
-}
 
 /// Collect stats about the received packets every `METER_RATE_SECS` seconds
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
@@ -279,7 +243,7 @@ fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
         }
         now = next_sys_time;
         
-        let total = total.swap(0, Ordering::SeqCst);
+        let total = total.swap(0, Ordering::AcqRel);
         
         // Print number of sent packets
         println!("{}", total);
