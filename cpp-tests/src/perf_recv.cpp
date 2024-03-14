@@ -37,7 +37,7 @@ unsigned int numpackets = 1024;
 unsigned int packetsize = 0;
 
 // stats collection
-std::atomic<uint64_t> total(0);
+volatile uint64_t total = 0;
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -62,7 +62,8 @@ void meter() {
 	while (!term.load(std::memory_order_relaxed)) {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
+		std::cout << total << std::endl;
+		total = 0;
 	}
 }
 
@@ -120,8 +121,6 @@ int main(int argc, char *argv[])
 	
 	// case single thread (main) with generic number of sockets
 	try {
-		uint64_t local_total = 0;
-		
 		while (!term.load(std::memory_order_relaxed)) {            
 			const nethuns_pkthdr_t *pkthdr = nullptr;
 			const unsigned char *frame = nullptr;
@@ -133,12 +132,7 @@ int main(int argc, char *argv[])
 			
 			if (pkt_id > 0) {
 				// Count valid packet
-				local_total++;
-				if (local_total > 1000) {
-					total.fetch_add(local_total, std::memory_order_acq_rel);
-					local_total = 0;
-				}
-				
+				total++;
 				nethuns_rx_release(my_socket, pkt_id);
 			}
 		}
