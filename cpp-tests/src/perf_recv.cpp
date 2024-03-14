@@ -59,11 +59,14 @@ void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
 
 void meter() {
 	auto now = std::chrono::system_clock::now();
+	uint64_t old_total = 0;
+	
 	while (!term.load(std::memory_order_relaxed)) {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
-		std::cout << total << std::endl;
-		total = 0;
+		uint64_t new_total = total;
+		std::cout << new_total - old_total << std::endl;
+		old_total = new_total;
 	}
 }
 
