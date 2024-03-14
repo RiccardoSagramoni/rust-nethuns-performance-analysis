@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 			nethuns_flush(out);
 			
 			// Update the total count
-			if (local_total > 1000) {
+			if (local_total >= 1000) {
 				total.fetch_add(local_total, std::memory_order_acq_rel);
 				local_total = 0;
 			}

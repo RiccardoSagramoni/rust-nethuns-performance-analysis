@@ -121,7 +121,7 @@ fn main() {
             Ok(_) => {
                 local_total += 1;
                 
-                if local_total > 1_000 {
+                if local_total >= 1_000 {
                     total.fetch_add(local_total, Ordering::AcqRel);
                     local_total = 0;
                 }

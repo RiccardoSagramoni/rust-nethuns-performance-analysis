@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 			if (pkt_id > 0) {
 				// Count valid packet
 				local_total++;
-				if (local_total > 1000) {
+				if (local_total >= 1000) {
 					total.fetch_add(local_total, std::memory_order_acq_rel);
 					local_total = 0;
 				}
