@@ -37,7 +37,7 @@ unsigned int numpackets = 1024;
 unsigned int packetsize = 0;
 
 // stats collection
-std::vector<uint64_t> collected_totals = std::vector<uint64_t>(60, 0);
+std::vector<uint64_t> collected_totals = std::vector<uint64_t>(128);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
