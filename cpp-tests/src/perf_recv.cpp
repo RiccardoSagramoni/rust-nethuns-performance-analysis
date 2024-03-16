@@ -37,7 +37,7 @@ unsigned int numpackets = 1024;
 unsigned int packetsize = 0;
 
 // stats collection
-std::vector<uint64_t> collected_totals = std::vector<uint64_t>(128);
+std::vector<uint64_t> collected_totals;
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -144,6 +144,10 @@ int main(int argc, char *argv[])
 		terminate_program, 
 		std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
 	);
+	
+	// Prepare vector for data collection
+	collected_totals = std::vector<uint64_t>{};
+	collected_totals.reserve((METER_DURATION_SECS / METER_RATE_SECS) + 1);
 	
 	// case single thread (main) with generic number of sockets
 	try {
