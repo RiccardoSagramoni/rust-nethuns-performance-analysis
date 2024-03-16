@@ -38,7 +38,6 @@ unsigned int packetsize = 0;
 #define PAYLOAD_LEN    34
 
 // stats collection
-std::atomic<uint64_t> total(0);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -56,15 +55,6 @@ void terminate(int exit_signal)
 void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
 	std::this_thread::sleep_until(stop_timestamp);
 	term.store(true, std::memory_order_relaxed);
-}
-
-void meter() {
-	auto now = std::chrono::system_clock::now();
-	while (!term.load(std::memory_order_relaxed)) {
-		now += std::chrono::seconds(METER_RATE_SECS);
-		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
-	}
 }
 
 
@@ -97,6 +87,32 @@ inline void fill_tx_ring(const unsigned char *payload, int pkt_size)
 
 inline std::chrono::system_clock::time_point next_meter_log() {
 	return std::chrono::system_clock::now() + std::chrono::seconds(METER_RATE_SECS);
+}
+
+
+void execute (const uint8_t* const payload) {
+	auto time_next_log = next_meter_log();
+	uint64_t total = 0;
+	
+	while (!term.load(std::memory_order_relaxed)) {
+		auto time_now = std::chrono::system_clock::now();
+		if (time_now >= time_next_log) {
+			time_next_log = next_meter_log();
+			std::cout << total << std::endl;
+			total = 0;
+		}
+		
+		// Prepare batch
+		for (int n = 0; n < batch_size; n++) {
+			if (nethuns_send(out, payload, PAYLOAD_LEN) <= 0) {
+				break;
+			}
+			total++;
+		}
+		
+		// Send batch
+		nethuns_flush(out);
+	}
 }
 
 
@@ -143,29 +159,8 @@ int main(int argc, char *argv[])
 		std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
 	);
 	
-	std::thread meter_th(meter);
-	
 	try {
-		uint64_t local_total = 0;
-		
-		while (!term.load(std::memory_order_relaxed)) {     
-			// Prepare batch
-			for (int n = 0; n < batch_size; n++) {
-				if (nethuns_send(out, payload, PAYLOAD_LEN) <= 0) {
-					break;
-				}
-				local_total++;
-			}
-			
-			// Send batch
-			nethuns_flush(out);
-			
-			// Update the total count
-			if (local_total >= 1000) {
-				total.fetch_add(local_total, std::memory_order_acq_rel);
-				local_total = 0;
-			}
-		}
+		execute(payload);
 	} catch(nethuns_exception &e) {
 		if (e.sock) {
 			nethuns_close(e.sock);
