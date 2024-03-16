@@ -37,6 +37,7 @@ unsigned int numpackets = 1024;
 unsigned int packetsize = 0;
 
 // stats collection
+std::vector<uint64_t> collected_totals = std::vector<uint64_t>(60, 0);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -74,7 +75,7 @@ void execute ()
 	while (!term.load(std::memory_order_relaxed)) {       
 		// Print logging stats
 		if (std::chrono::system_clock::now() >= time_next_log) {
-			std::cout << total << std::endl;
+			collected_totals.push_back(total);
 			total = 0;
 			time_next_log = next_meter_log();
 		}
@@ -92,6 +93,10 @@ void execute ()
 			total++;
 			nethuns_rx_release(my_socket, pkt_id);
 		}
+	}
+	
+	for (auto t : collected_totals) {
+		std::cout << t << std::endl;
 	}
 }
 
