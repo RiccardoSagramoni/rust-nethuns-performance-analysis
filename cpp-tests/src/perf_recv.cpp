@@ -72,6 +72,9 @@ void execute ()
 	auto time_next_log = next_meter_log();
 	uint64_t total = 0;
 	
+	const nethuns_pkthdr_t *pkthdr = nullptr;
+	const unsigned char *frame = nullptr;
+	
 	while (!term.load(std::memory_order_relaxed)) {       
 		// Print logging stats
 		if (std::chrono::system_clock::now() >= time_next_log) {
@@ -80,8 +83,6 @@ void execute ()
 			time_next_log = next_meter_log();
 		}
 		
-		const nethuns_pkthdr_t *pkthdr = nullptr;
-		const unsigned char *frame = nullptr;
 		uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
 		
 		if (pkt_id == NETHUNS_ERROR) {
