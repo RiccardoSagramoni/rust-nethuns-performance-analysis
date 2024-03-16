@@ -69,7 +69,8 @@ inline std::chrono::system_clock::time_point next_meter_log()
 
 void execute ()
 {
-	auto time_next_log = next_meter_log();
+	const auto meter_rate_secs = std::chrono::seconds(METER_RATE_SECS);
+	auto time_next_log = std::chrono::system_clock::now() + meter_rate_secs;
 	uint64_t total = 0;
 	
 	const nethuns_pkthdr_t *pkthdr = nullptr;
@@ -77,10 +78,11 @@ void execute ()
 	
 	while (!term.load(std::memory_order_relaxed)) {       
 		// Print logging stats
-		if (std::chrono::system_clock::now() >= time_next_log) {
+		auto now = std::chrono::system_clock::now();
+		if (now >= time_next_log) {
 			collected_totals.push_back(total);
 			total = 0;
-			time_next_log = next_meter_log();
+			time_next_log = now + meter_rate_secs;
 		}
 		
 		uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
