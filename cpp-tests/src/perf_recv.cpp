@@ -87,7 +87,7 @@ void execute ()
 	
 	while (!term.load(std::memory_order_relaxed)) {       
 		// Print logging stats
-		if (logging.load(std::memory_order_acquire)) {
+		if (total % 1000 == 0 && logging.load(std::memory_order_acquire)) {
 			logging.store(false, std::memory_order_release);
 			collected_totals.push_back(total);
 			total = 0;
