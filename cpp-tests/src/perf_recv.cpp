@@ -38,6 +38,7 @@ unsigned int packetsize = 0;
 
 // stats collection
 std::vector<uint64_t> collected_totals;
+std::atomic<bool> logging(false);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -67,22 +68,29 @@ inline std::chrono::system_clock::time_point next_meter_log()
 }
 
 
+void logging_timer() {
+	while (!term.load(std::memory_order_relaxed)) {
+		std::this_thread::sleep_for(std::chrono::seconds(METER_DURATION_SECS));
+		logging.store(true, std::memory_order_release);
+	}
+}
+
+
 void execute ()
 {
-	const auto meter_rate_secs = std::chrono::seconds(METER_RATE_SECS);
-	auto time_next_log = std::chrono::system_clock::now() + meter_rate_secs;
 	uint64_t total = 0;
 	
 	const nethuns_pkthdr_t *pkthdr = nullptr;
 	const unsigned char *frame = nullptr;
 	
+	std::thread logging_timer_thread(logging_timer);
+	
 	while (!term.load(std::memory_order_relaxed)) {       
 		// Print logging stats
-		auto now = std::chrono::system_clock::now();
-		if (now >= time_next_log) {
+		if (logging.load(std::memory_order_acquire)) {
+			logging.store(false, std::memory_order_acquire);
 			collected_totals.push_back(total);
 			total = 0;
-			time_next_log = now + meter_rate_secs;
 		}
 		
 		uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
