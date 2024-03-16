@@ -37,7 +37,6 @@ unsigned int numpackets = 1024;
 unsigned int packetsize = 0;
 
 // stats collection
-std::atomic<uint64_t> total(0);
 #define     METER_DURATION_SECS    10 * 60 + 1
 #define     METER_RATE_SECS        10
 
@@ -57,18 +56,44 @@ void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
 	term.store(true, std::memory_order_relaxed);
 }
 
-void meter() {
-	auto now = std::chrono::system_clock::now();
-	while (!term.load(std::memory_order_relaxed)) {
-		now += std::chrono::seconds(METER_RATE_SECS);
-		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
-	}
-}
-
 
 void parse_command_line(int argc, char *argv[]);
 
+
+inline std::chrono::system_clock::time_point next_meter_log()
+{
+	return std::chrono::system_clock::now() + std::chrono::seconds(METER_RATE_SECS);
+}
+
+
+void execute ()
+{
+	auto time_next_log = next_meter_log();
+	uint64_t total = 0;
+	
+	while (!term.load(std::memory_order_relaxed)) {       
+		// Print logging stats
+		if (std::chrono::system_clock::now() >= time_next_log) {
+			std::cout << total << std::endl;
+			total = 0;
+			time_next_log = next_meter_log();
+		}
+		
+		const nethuns_pkthdr_t *pkthdr = nullptr;
+		const unsigned char *frame = nullptr;
+		uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
+		
+		if (pkt_id == NETHUNS_ERROR) {
+			throw nethuns_exception(my_socket);
+		}
+		
+		if (pkt_id > 0) {
+			// Count valid packet
+			total++;
+			nethuns_rx_release(my_socket, pkt_id);
+		}
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -115,33 +140,9 @@ int main(int argc, char *argv[])
 		std::chrono::system_clock::now() + std::chrono::seconds(METER_DURATION_SECS)
 	);
 	
-	// start thread for stats collection
-	std::thread meter_th(meter);
-	
 	// case single thread (main) with generic number of sockets
 	try {
-		uint64_t local_total = 0;
-		
-		while (!term.load(std::memory_order_relaxed)) {            
-			const nethuns_pkthdr_t *pkthdr = nullptr;
-			const unsigned char *frame = nullptr;
-			uint64_t pkt_id = nethuns_recv(my_socket, &pkthdr, &frame);
-			
-			if (pkt_id == NETHUNS_ERROR) {
-				throw nethuns_exception(my_socket);
-			}
-			
-			if (pkt_id > 0) {
-				// Count valid packet
-				local_total++;
-				if (local_total >= 1000) {
-					total.fetch_add(local_total, std::memory_order_acq_rel);
-					local_total = 0;
-				}
-				
-				nethuns_rx_release(my_socket, pkt_id);
-			}
-		}
+		execute();
 	} catch(nethuns_exception &e) {
 		if (e.sock) {
 			nethuns_close(e.sock);

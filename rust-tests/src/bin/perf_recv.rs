@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
@@ -97,34 +97,20 @@ fn main() {
         })
     };
     
-    // Start thread for data collection
-    let total = Arc::new(AtomicU64::new(0));
-    
-    let _ = {
-        let term = term.clone();
-        let total = total.clone();
-        thread::spawn(move || {
-            meter(total, term);
-        })
-    };
-    
-    let mut local_total: u64 = 0;
+    let mut total: u64 = 0;
+    let mut next_log_time = compute_next_log_time();
     
     // Start receiving
-    loop {
-        // Check condition for program termination
-        if term.load(Ordering::Relaxed) {
-            break;
+    while !term.load(Ordering::Relaxed) {
+        if SystemTime::now() >= next_log_time {
+            println!("{}", total);
+            total = 0;
+            next_log_time = compute_next_log_time();
         }
         
         match socket.recv() {
             Ok(_) => {
-                local_total += 1;
-                
-                if local_total >= 1_000 {
-                    total.fetch_add(local_total, Ordering::AcqRel);
-                    local_total = 0;
-                }
+                total += 1;
             }
             
             Err(NethunsRecvError::InUse)
@@ -174,27 +160,9 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
 }
 
 
-/// Collect stats about the received packets every `METER_RATE_SECS` seconds
-fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
-    let mut now = SystemTime::now();
-    
-    loop {
-        if term.load(Ordering::Relaxed) {
-            break;
-        }
-        
-        // Sleep for 1 second
-        let next_sys_time = now
-            .checked_add(Duration::from_secs(METER_RATE_SECS))
-            .expect("SystemTime::checked_add() failed");
-        if let Ok(delay) = next_sys_time.duration_since(now) {
-            thread::sleep(delay);
-        }
-        now = next_sys_time;
-        
-        let total = total.swap(0, Ordering::AcqRel);
-        
-        // Print number of sent packets
-        println!("{}", total);
-    }
+#[inline(always)]
+fn compute_next_log_time() -> SystemTime {
+    SystemTime::now()
+        .checked_add(Duration::from_secs(METER_RATE_SECS))
+        .expect("SystemTime::checked_add() failed")
 }

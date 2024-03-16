@@ -95,11 +95,10 @@ void execute (const uint8_t* const payload) {
 	uint64_t total = 0;
 	
 	while (!term.load(std::memory_order_relaxed)) {
-		auto time_now = std::chrono::system_clock::now();
-		if (time_now >= time_next_log) {
-			time_next_log = next_meter_log();
+		if (std::chrono::system_clock::now() >= time_next_log) {
 			std::cout << total << std::endl;
 			total = 0;
+			time_next_log = next_meter_log();
 		}
 		
 		// Prepare batch
