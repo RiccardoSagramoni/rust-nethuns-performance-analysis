@@ -70,7 +70,7 @@ inline std::chrono::system_clock::time_point next_meter_log()
 
 void logging_timer() {
 	while (!term.load(std::memory_order_relaxed)) {
-		std::this_thread::sleep_for(std::chrono::seconds(METER_DURATION_SECS));
+		std::this_thread::sleep_for(std::chrono::seconds(METER_RATE_SECS));
 		logging.store(true, std::memory_order_release);
 	}
 }
