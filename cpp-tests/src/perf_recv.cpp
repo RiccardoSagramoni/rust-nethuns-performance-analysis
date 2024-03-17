@@ -59,10 +59,20 @@ void terminate_program(std::chrono::system_clock::time_point stop_timestamp) {
 
 void meter() {
 	auto now = std::chrono::system_clock::now();
+	uint64_t old_total = 0;
+	
 	while (!term.load(std::memory_order_relaxed)) {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
-		std::cout << total.exchange(0, std::memory_order_acq_rel) << std::endl;
+		
+		uint64_t new_total = total.load(std::memory_order_relaxed);
+		if (new_total < old_total) {
+			// overflow detected
+			exit(1);
+		}
+		
+		std::cout << new_total - old_total << std::endl;
+		old_total = new_total;
 	}
 }
 
@@ -120,8 +130,6 @@ int main(int argc, char *argv[])
 	
 	// case single thread (main) with generic number of sockets
 	try {
-		uint64_t local_total = 0;
-		
 		while (!term.load(std::memory_order_relaxed)) {            
 			const nethuns_pkthdr_t *pkthdr = nullptr;
 			const unsigned char *frame = nullptr;
@@ -133,11 +141,7 @@ int main(int argc, char *argv[])
 			
 			if (pkt_id > 0) {
 				// Count valid packet
-				local_total++;
-				if (local_total >= 1000) {
-					total.fetch_add(local_total, std::memory_order_acq_rel);
-					local_total = 0;
-				}
+				total.fetch_add(1, std::memory_order_relaxed);
 				
 				nethuns_rx_release(my_socket, pkt_id);
 			}
