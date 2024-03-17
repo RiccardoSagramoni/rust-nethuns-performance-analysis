@@ -130,6 +130,8 @@ int main(int argc, char *argv[])
 	
 	// case single thread (main) with generic number of sockets
 	try {
+		uint64_t local_total = 0;
+		
 		while (!term.load(std::memory_order_relaxed)) {            
 			const nethuns_pkthdr_t *pkthdr = nullptr;
 			const unsigned char *frame = nullptr;
@@ -143,7 +145,10 @@ int main(int argc, char *argv[])
 				nethuns_rx_release(my_socket, pkt_id);
 				
 				// Count valid packet
-				total.fetch_add(1, std::memory_order_relaxed);
+				local_total++;
+				if (local_total & 0x3FF) { // update every 1024 packets
+					total.store(local_total, std::memory_order_release);
+				}
 			}
 		}
 	} catch(nethuns_exception &e) {
