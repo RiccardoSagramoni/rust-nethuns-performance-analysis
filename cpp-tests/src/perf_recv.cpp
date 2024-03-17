@@ -65,7 +65,7 @@ void meter() {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
 		
-		uint64_t new_total = total.load(std::memory_order_acquire);
+		uint64_t new_total = total.load(std::memory_order_relaxed);
 		if (new_total < old_total) {
 			// overflow detected
 			exit(1);
@@ -130,8 +130,6 @@ int main(int argc, char *argv[])
 	
 	// case single thread (main) with generic number of sockets
 	try {
-		uint64_t local_total = 0;
-		
 		while (!term.load(std::memory_order_relaxed)) {            
 			const nethuns_pkthdr_t *pkthdr = nullptr;
 			const unsigned char *frame = nullptr;
@@ -145,10 +143,7 @@ int main(int argc, char *argv[])
 				nethuns_rx_release(my_socket, pkt_id);
 				
 				// Count valid packet
-				local_total++;
-				// if (local_total & 0x3FF) { // update every 1024 packets
-					total.store(local_total, std::memory_order_release);
-				// }
+				total.fetch_add(1, std::memory_order_relaxed);
 			}
 		}
 	} catch(nethuns_exception &e) {
