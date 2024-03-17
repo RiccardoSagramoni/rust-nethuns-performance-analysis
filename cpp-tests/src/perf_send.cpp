@@ -165,7 +165,9 @@ int main(int argc, char *argv[])
 					break;
 				}
 				local_total++;
-				total.store(local_total, std::memory_order_release);
+				if (local_total & 0x3FF) { // update every 1024 packets
+					total.store(local_total, std::memory_order_release);
+				}
 			}
 			
 			// Send batch
