@@ -122,28 +122,22 @@ fn main() {
     
     let mut local_total: u64 = 0;
     
-    loop {
-        // Check condition for program termination
-        if term.load(Ordering::Relaxed) {
-            break;
-        }
-        
+    while !term.load(Ordering::Relaxed) {
         // Prepare batch
         for _ in 0..args.batch_size {
             if socket.send(&PAYLOAD).is_err() {
                 break;
             }
             local_total += 1;
+            
+            if local_total & 0x3FF == 0 {
+                // update every 1024 packets
+                total.store(local_total, Ordering::Release);
+            }
         }
         
         // Send batch
         socket.flush().expect("flush failed");
-        
-        // Update global counter
-        if local_total >= 1_000 {
-            total.fetch_add(local_total, Ordering::AcqRel);
-            local_total = 0;
-        }
     }
 }
 
@@ -228,24 +222,28 @@ fn prepare_tx_socket(
 /// Collect stats about the received packets every `METER_RATE_SECS` seconds
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
     let mut now = SystemTime::now();
+    let mut old_total: u64 = 0;
     
-    loop {
-        if term.load(Ordering::Relaxed) {
-            break;
-        }
-        
-        // Sleep for 1 second
-        let next_sys_time = now
-            .checked_add(Duration::from_secs(METER_RATE_SECS))
-            .expect("SystemTime::checked_add() failed");
-        if let Ok(delay) = next_sys_time.duration_since(now) {
-            thread::sleep(delay);
-        }
-        now = next_sys_time;
-        
-        let total = total.swap(0, Ordering::AcqRel);
+    while !term.load(Ordering::Relaxed) {
+        // Sleep for `METER_RATE_SECS` second
+        now = sleep(now);
         
         // Print number of sent packets
-        println!("{}", total);
+        let new_total = total.load(Ordering::Acquire);
+        println!("{}", new_total - old_total);
+        old_total = new_total;
     }
+}
+
+/// Sleep for `METER_RATE_SECS` second
+fn sleep(now: SystemTime) -> SystemTime {
+    let next_sys_time = now
+        .checked_add(Duration::from_secs(METER_RATE_SECS))
+        .expect("SystemTime::checked_add() failed");
+    
+    if let Ok(delay) = next_sys_time.duration_since(now) {
+        thread::sleep(delay);
+    }
+    
+    next_sys_time
 }
