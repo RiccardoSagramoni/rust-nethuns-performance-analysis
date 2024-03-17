@@ -66,7 +66,7 @@ void meter() {
 		now += std::chrono::seconds(METER_RATE_SECS);
 		std::this_thread::sleep_until(now);
 		
-		uint64_t new_total = total.load(std::memory_order_relaxed);
+		uint64_t new_total = total.load(std::memory_order_acquire);
 		if (new_total < old_total) {
 			// overflow detected
 			exit(1);
@@ -156,13 +156,16 @@ int main(int argc, char *argv[])
 	std::thread meter_th(meter);
 	
 	try {
+		uint64_t local_total = 0;
+		
 		while (!term.load(std::memory_order_relaxed)) {     
 			// Prepare batch
 			for (int n = 0; n < batch_size; n++) {
 				if (nethuns_send(out, payload, PAYLOAD_LEN) <= 0) {
 					break;
 				}
-				total.fetch_add(1, std::memory_order_relaxed);
+				local_total++;
+				total.store(local_total, std::memory_order_release);
 			}
 			
 			// Send batch
