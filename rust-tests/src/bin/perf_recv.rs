@@ -172,13 +172,16 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
 /// Collect stats about the received packets every `METER_RATE_SECS` seconds
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
     let mut now = SystemTime::now();
+    let mut old_total: u64 = 0;
     
     while !term.load(Ordering::Relaxed) {
         // Sleep for `METER_RATE_SECS` second
         now = sleep(now);
         
         // Print number of sent packets
-        println!("{}", total.load(Ordering::Acquire));
+        let new_total = total.load(Ordering::Acquire);
+        println!("{}", new_total - old_total);
+        old_total = new_total;
     }
 }
 
