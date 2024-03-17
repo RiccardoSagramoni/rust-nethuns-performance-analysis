@@ -146,9 +146,9 @@ int main(int argc, char *argv[])
 				
 				// Count valid packet
 				local_total++;
-				// if (local_total & 0x3FF) { // update every 1024 packets
+				if (local_total & 0x3FF) { // update every 1024 packets
 					total.store(local_total, std::memory_order_release);
-				// }
+				}
 			}
 		}
 	} catch(nethuns_exception &e) {
