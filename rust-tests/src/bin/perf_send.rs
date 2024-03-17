@@ -122,7 +122,7 @@ fn main() {
     
     let mut local_total: u64 = 0;
     
-    while term.load(Ordering::Relaxed) {
+    while !term.load(Ordering::Relaxed) {
         // Prepare batch
         for _ in 0..args.batch_size {
             if socket.send(&PAYLOAD).is_err() {
@@ -223,7 +223,7 @@ fn prepare_tx_socket(
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
     let mut now = SystemTime::now();
     
-    while term.load(Ordering::Relaxed) {
+    while !term.load(Ordering::Relaxed) {
         // Sleep for `METER_RATE_SECS` second
         now = sleep(now);
         

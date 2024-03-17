@@ -111,7 +111,7 @@ fn main() {
     let mut local_total: u64 = 0;
     
     // Start receiving
-    while term.load(Ordering::Relaxed) {
+    while !term.load(Ordering::Relaxed) {
         match socket.recv() {
             Ok(_) => {
                 local_total += 1;
@@ -173,7 +173,7 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
 fn meter(total: Arc<AtomicU64>, term: Arc<AtomicBool>) {
     let mut now = SystemTime::now();
     
-    while term.load(Ordering::Relaxed) {
+    while !term.load(Ordering::Relaxed) {
         // Sleep for `METER_RATE_SECS` second
         now = sleep(now);
         
