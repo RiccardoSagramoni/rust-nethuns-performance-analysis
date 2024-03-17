@@ -42,8 +42,11 @@ fn main() {
         .expect("Failed to parse C++ data");
     
     // Print stats
-    println!("Rust stats:\n{:#?}\n", compute_stats(&rust_data));
-    println!("C++ stats:\n{:#?}\n", compute_stats(&cpp_data));
+    let rust_stats = compute_stats(&rust_data);
+    let cpp_stats = compute_stats(&cpp_data);
+    println!("Rust stats:\n{rust_stats:#?}\n");
+    println!("C++ stats:\n{cpp_stats:#?}\n");
+    println!("Ratio Rust / C++: {}", rust_stats.median / cpp_stats.median);
     
     // Generate plot
     generate_box_plot(
@@ -119,21 +122,19 @@ fn generate_box_plot(
     
     // plot.show();
     plot.write_html(format!("{output_filename}.html"));
-    plot.write_image(output_filename, ImageFormat::PNG, 1000, 500, 4.0);
-    plot.write_image(output_filename, ImageFormat::SVG, 1000, 500, 1.0);
+    plot.write_image(output_filename, ImageFormat::PNG, 800, 500, 4.0);
 }
 
 
 fn generate_layout(title: &str) -> Layout {
     Layout::new()
-        .height(500)
-        .width(1000)
         .y_axis(
             Axis::new()
                 .title(
                     Title::new("Throughput (Mpps)").font(Font::new().size(16)),
                 )
                 .color("black")
+                // .range(vec![start, end])
                 .dtick(0.2),
         )
         .x_axis(Axis::new().color("black").tick_font(Font::new().size(16)))
@@ -142,5 +143,4 @@ fn generate_layout(title: &str) -> Layout {
             Title::new(format!("<b>{title}</b>").as_str())
                 .font(Font::new().color("black").size(24)),
         )
-        .box_gap(0.5)
 }
