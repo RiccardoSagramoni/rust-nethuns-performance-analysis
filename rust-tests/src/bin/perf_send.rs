@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -21,10 +20,9 @@ const METER_RATE_SECS: u64 = 10;
 struct Args {
     interface: String,
     batch_size: u32,
-    zerocopy: bool,
     
     numpackets: u32,
-    packetsize: u32,
+    packetsize: usize,
 }
 
 
@@ -36,19 +34,11 @@ Required options:
             [ -i <ifname> ]                     set network interface
 Other options:
             [ -b <batch_sz> ]                   set batch size
-            [ -z ]                              enable send zero-copy
+            [ -s <packet_size> ]                set packet size (default 64)
             [ --numpackets <num_packets> ]      set number of packets (default 1024)
-            [ --packetsize <packet_size> ]      set packet size (default 0)
 ";
 
-const PAYLOAD: [u8; 34] = [
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0, 0xbf, /* L`..UF.. */
-    0x97, 0xe2, 0xff, 0xae, 0x08, 0x00, 0x45, 0x00, /* ......E. */
-    0x00, 0x54, 0xb3, 0xf9, 0x40, 0x00, 0x40, 0x11, /* .T..@.@. */
-    0xf5, 0x32, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* .2...... */
-    0x07, 0x08,
-];
-
+const PACKET_HEADER_SIZE: usize = 30;
 
 fn main() {
     #[cfg(feature = "dhat-heap")]
@@ -76,7 +66,7 @@ fn main() {
     let opt = NethunsSocketOptions {
         numblocks: 1,
         numpackets: args.numpackets,
-        packetsize: args.packetsize,
+        packetsize: 0,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
@@ -87,9 +77,11 @@ fn main() {
         ..Default::default()
     };
     
+    // Generate payload
+    let payload: Vec<u8> = vec![0xff; args.packetsize - PACKET_HEADER_SIZE];
     
     // Setup and fill transmission rings for each socket
-    let socket = prepare_tx_socket(&args, opt, &PAYLOAD).unwrap();
+    let socket = prepare_tx_socket(&args, opt).unwrap();
     
     // Define atomic variable for program termination
     let term = Arc::new(AtomicBool::new(false));
@@ -125,7 +117,7 @@ fn main() {
     while !term.load(Ordering::Relaxed) {
         // Prepare batch
         for _ in 0..args.batch_size {
-            if socket.send(&PAYLOAD).is_err() {
+            if socket.send(&payload).is_err() {
                 break;
             }
             local_total += 1;
@@ -164,10 +156,14 @@ fn parse_args() -> Result<Args, anyhow::Error> {
     let args = Args {
         interface: pargs.value_from_str(["-i", "--interface"])?,
         batch_size: pargs.value_from_str(["-b", "--batch_size"]).unwrap_or(1),
-        zerocopy: pargs.contains(["-z", "--zerocopy"]),
         numpackets: pargs.value_from_str("--numpackets").unwrap_or(1024),
-        packetsize: pargs.value_from_str("--packetsize").unwrap_or(0),
+        packetsize: pargs.value_from_str("-s").unwrap_or(64),
     };
+    
+    // Check if packetsize is greater than the packet payload
+    if args.packetsize <= PACKET_HEADER_SIZE {
+        anyhow::bail!("Packet size must be more than {}", PACKET_HEADER_SIZE);
+    }
     
     // It's up to the caller what to do with the remaining arguments.
     let remaining = pargs.finish();
@@ -193,27 +189,11 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
 fn prepare_tx_socket(
     args: &Args,
     opt: NethunsSocketOptions,
-    payload: &[u8],
 ) -> Result<NethunsSocket, anyhow::Error> {
     // Open socket
-    let mut socket = BindableNethunsSocket::open(opt)?
+    let socket = BindableNethunsSocket::open(opt)?
         .bind(&args.interface, NethunsQueue::Any)
         .map_err(|(e, _)| e)?;
-    
-    // fill the slots in the tx ring (optimized send only)
-    if args.zerocopy {
-        let size = socket.txring_get_size().expect("socket not in tx mode");
-        
-        for j in 0..size {
-            // tell me where to copy the j-th packet to be transmitted
-            let mut pkt = socket
-                .get_packet_buffer_ref(j as _)
-                .expect("socket not in tx mode");
-            
-            // copy the packet
-            pkt.write_all(payload)?;
-        }
-    }
     
     Ok(socket)
 }
