@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
 
-use nethuns::sockets::{BindableNethunsSocket, NethunsSocket};
+use nethuns::sockets::BindableNethunsSocket;
 use nethuns::types::{
     NethunsCaptureDir, NethunsCaptureMode, NethunsQueue, NethunsSocketMode,
     NethunsSocketOptions,
@@ -20,8 +20,6 @@ const METER_RATE_SECS: u64 = 10;
 struct Args {
     interface: String,
     batch_size: u32,
-    
-    numpackets: u32,
     packetsize: usize,
 }
 
@@ -35,7 +33,6 @@ Required options:
 Other options:
             [ -b <batch_sz> ]                   set batch size
             [ -s <packet_size> ]                set packet size (default 64)
-            [ --numpackets <num_packets> ]      set number of packets (default 1024)
 ";
 
 const PACKET_HEADER_SIZE: usize = 30;
@@ -65,7 +62,7 @@ fn main() {
     // Nethuns options
     let opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: args.numpackets,
+        numpackets: 1024,
         packetsize: 0,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
@@ -81,7 +78,10 @@ fn main() {
     let payload: Vec<u8> = vec![0xff; args.packetsize - PACKET_HEADER_SIZE];
     
     // Setup and fill transmission rings for each socket
-    let socket = prepare_tx_socket(&args, opt).unwrap();
+    let socket = BindableNethunsSocket::open(opt)
+        .unwrap()
+        .bind(&args.interface, NethunsQueue::Any)
+        .unwrap();
     
     // Define atomic variable for program termination
     let term = Arc::new(AtomicBool::new(false));
@@ -133,6 +133,7 @@ fn main() {
     }
 }
 
+
 /// Parses the command-line arguments and build an instance of the `Args`
 /// struct.
 ///
@@ -156,8 +157,7 @@ fn parse_args() -> Result<Args, anyhow::Error> {
     let args = Args {
         interface: pargs.value_from_str(["-i", "--interface"])?,
         batch_size: pargs.value_from_str(["-b", "--batch_size"]).unwrap_or(1),
-        numpackets: pargs.value_from_str("--numpackets").unwrap_or(1024),
-        packetsize: pargs.value_from_str("-s").unwrap_or(64),
+        packetsize: pargs.value_from_str(["-s", "--packet-size"]).unwrap_or(64),
     };
     
     // Check if packetsize is greater than the packet payload
@@ -174,6 +174,7 @@ fn parse_args() -> Result<Args, anyhow::Error> {
     Ok(args)
 }
 
+
 /// Set an handler for the SIGINT signal (Ctrl-C),
 /// which will notify the other threads
 /// to gracefully stop their execution.
@@ -183,19 +184,6 @@ fn set_sigint_handler(term: Arc<AtomicBool>) {
         term.store(true, Ordering::Relaxed);
     })
     .expect("Error setting Ctrl-C handler");
-}
-
-/// Setup and fill transmission ring.
-fn prepare_tx_socket(
-    args: &Args,
-    opt: NethunsSocketOptions,
-) -> Result<NethunsSocket, anyhow::Error> {
-    // Open socket
-    let socket = BindableNethunsSocket::open(opt)?
-        .bind(&args.interface, NethunsQueue::Any)
-        .map_err(|(e, _)| e)?;
-    
-    Ok(socket)
 }
 
 

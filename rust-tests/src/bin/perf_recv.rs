@@ -23,17 +23,12 @@ Use --help (or -h) to see full option list and a complete description
 
 Required options:
             [ -i <ifname> ]                     set network interface
-Other options:
-            [ --numpackets <num_packets> ]      set number of packets (default 1024)
-            [ --packetsize <packet_size> ]      set packet size (default 0)
 ";
 
 
 #[derive(Debug)]
 struct Args {
     interface: String,
-    numpackets: u32,
-    packetsize: u32,
 }
 
 
@@ -59,8 +54,8 @@ fn main() {
     
     let nethuns_opt = NethunsSocketOptions {
         numblocks: 1,
-        numpackets: args.numpackets,
-        packetsize: args.packetsize,
+        numpackets: 1024,
+        packetsize: 0,
         timeout_ms: 0,
         dir: NethunsCaptureDir::InOut,
         capture: NethunsCaptureMode::ZeroCopy,
@@ -143,8 +138,6 @@ fn parse_args() -> anyhow::Result<Args> {
     
     let args = Args {
         interface: pargs.value_from_str("-i")?,
-        numpackets: pargs.value_from_str("--numpackets").unwrap_or(1024),
-        packetsize: pargs.value_from_str("--packetsize").unwrap_or(0),
     };
     
     // It's up to the caller what to do with the remaining arguments.

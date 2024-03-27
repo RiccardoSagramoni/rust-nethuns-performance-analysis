@@ -20,10 +20,7 @@
 const std::string help_brief = "Usage:  nethuns-send [ options ]\n" \
 								"Use --help (or -h) to see full option list and a complete description.\n\n"
 								"Required options: \n" \
-								"\t\t\t[ -i <ifname> ] \t set network interface \n" \
-								"Other options: \n" \
-								"\t\t\t[ -n ] \t\t\t set number of packets \n" \
-								"\t\t\t[ -s ] \t\t\t set packet size \n";
+								"\t\t\t[ -i <ifname> ] \t set network interface \n";
 
 
 // nethuns socket
@@ -33,8 +30,6 @@ char* errbuf;
 
 // configuration
 std::string interface = "";
-unsigned int numpackets = 1024;
-unsigned int packetsize = 0;
 
 // stats collection
 std::atomic<uint64_t> total(0);
@@ -90,8 +85,8 @@ int main(int argc, char *argv[])
 	netopt =
 	{
 		.numblocks       = 1
-	,   .numpackets      = numpackets
-	,   .packetsize      = packetsize
+	,   .numpackets      = 1024
+	,   .packetsize      = 0
 	,   .timeout_ms      = 0
 	,   .dir             = nethuns_in_out
 	,   .capture         = nethuns_cap_zero_copy
@@ -174,7 +169,7 @@ void parse_command_line(int argc, char *argv[])
 	int optidx = 0;
 	opterr = 1;     // turn on/off getopt error messages
 	if (argc > 1 && argc < 10) {
-		while ((opt = getopt_long(argc, argv, "hi:n:s:", NULL, &optidx)) != -1) {
+		while ((opt = getopt_long(argc, argv, "hi:", NULL, &optidx)) != -1) {
 			switch (opt) {
 			case 'h':
 				std::cout << help_brief << std::endl;
@@ -183,14 +178,6 @@ void parse_command_line(int argc, char *argv[])
 			case 'i':
 				if (optarg)
 					interface = optarg;
-				break;
-			case 'n':
-				if (optarg)
-					numpackets = atoi(optarg);
-				break;
-			case 's':
-				if (optarg)
-					packetsize = atoi(optarg);
 				break;
 			default:
 				std::cerr << "Error in parsing command line options.\n" << help_brief << std::endl;
@@ -206,7 +193,5 @@ void parse_command_line(int argc, char *argv[])
 
 	std::cout << "\nTest " << argv[0] << " started with parameters \n"
 			  << "* interface: " << interface << " \n"
-			  << "* numpackets: " << numpackets << " \n"
-			  << "* packetsize: " << packetsize << " \n"
 			  << std::endl;
 }
